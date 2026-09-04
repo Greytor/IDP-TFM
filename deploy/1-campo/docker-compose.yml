@@ -1,0 +1,102 @@
+# ─── Simuladores de la celda de llenado F&B ──────────────────────────────────
+# Cuatro dispositivos de campo simulados (contrato UNS §7.1).
+# 4 dispositivos, 2 protocolos:
+#
+#   plc-llenado-01   OPC UA     :4840   PLC maestro de celda (modelo del proceso)
+#   valvula-01       OPC UA     :4841   Válvula de control (posicionador inteligente)
+#   coriolis-01      Modbus TCP :5020   Caudalímetro Coriolis (FC3) + diag NOA
+#   medidor-02       Modbus TCP :5021   Medidor de energía (FC4, estilo Eastron SDM)
+#
+# Causalidad: el PLC corre el modelo de la línea y expone GET /state (:8080
+# interno, publicado en :8085 para debug). Los otros 3 hacen poll de ese
+# endpoint y derivan su propia física. Si el PLC cae, degradan a "línea
+# parada" y lo señalizan (status word / PlcLinkOk → q=uncertain en el UNS).
+#
+# ⚠ El puerto 4840 debe quedar libre para el PLC simulado.
+#   antes de levantar este (docker compose down en brix/).
+#
+# Node-RED (edge) extrae por Modbus/OPC UA y publica al UNS con RBE.
+# Mapas de registros/nodos y guía de integración: ./README.md
+
+name: greytec-simuladores
+
+services:
+
+  plc-llenado:
+    build: .
+    image: greytec-sim:local
+    container_name: sim-plc-llenado
+    command: ["python", "-m", "sims.plc_llenado"]
+    restart: unless-stopped
+    ports:
+      - "4840:4840"   # OPC UA — Node-RED y UAExpert
+      - "8085:8080"   # REST /state — solo debug (curl http://10.10.10.100:8085/state)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8080/healthz', timeout=2)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - greytec-sim
+
+  valvula-01:
+    image: greytec-sim:local
+    container_name: sim-valvula-01
+    command: ["python", "-m", "sims.valvula"]
+    restart: unless-stopped
+    depends_on:
+      - plc-llenado
+    environment:
+      PLC_STATE_URL: http://plc-llenado:8080/state
+    ports:
+      - "4841:4841"   # OPC UA
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - greytec-sim
+
+  coriolis-01:
+    image: greytec-sim:local
+    container_name: sim-coriolis-01
+    command: ["python", "-m", "sims.coriolis"]
+    restart: unless-stopped
+    depends_on:
+      - plc-llenado
+    environment:
+      PLC_STATE_URL: http://plc-llenado:8080/state
+    ports:
+      - "5020:5020"   # Modbus TCP
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - greytec-sim
+
+  medidor-02:
+    image: greytec-sim:local
+    container_name: sim-medidor-02
+    command: ["python", "-m", "sims.medidor"]
+    restart: unless-stopped
+    depends_on:
+      - plc-llenado
+    environment:
+      PLC_STATE_URL: http://plc-llenado:8080/state
+    ports:
+      - "5021:5021"   # Modbus TCP
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - greytec-sim
+
+networks:
+  greytec-sim:
+    driver: bridge

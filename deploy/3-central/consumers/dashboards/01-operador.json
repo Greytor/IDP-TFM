@@ -1,0 +1,469 @@
+{
+  "uid": "greytec-operador",
+  "title": "Greytec — Operador",
+  "description": "Vista de tiempo real para el operador de la celda de llenado: estado de línea, lazo caudal-válvula, salud del instrumento (NOA) y alarmas. Fuentes: v_process_readings, v_kpi_production_live, v_alerts_recent.",
+  "tags": ["greytec-demo"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "graphTooltip": 1,
+  "editable": true,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": { "list": [] },
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Vistas",
+      "tags": ["greytec-demo"],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": false,
+      "icon": "dashboard",
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Estado de línea",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "STOPPED": { "color": "text", "index": 0 },
+                "STARTING": { "color": "yellow", "index": 1 },
+                "RUNNING": { "color": "green", "index": 2 },
+                "FAULT": { "color": "red", "index": 3 }
+              }
+            }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "text", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT CASE value::int WHEN 0 THEN 'STOPPED' WHEN 1 THEN 'STARTING' WHEN 2 THEN 'RUNNING' WHEN 3 THEN 'FAULT' END AS \"Estado\" FROM v_process_readings WHERE src='plc-llenado-01' AND field='line_state' ORDER BY ts DESC LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Botellas buenas",
+      "description": "Contador acumulado good_count (se resetea solo si el PLC reinicia).",
+      "gridPos": { "h": 6, "w": 4, "x": 4, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT value::int AS \"Buenas\" FROM v_process_readings WHERE src='plc-llenado-01' AND field='good_count' ORDER BY ts DESC LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Botellas rechazadas",
+      "gridPos": { "h": 6, "w": 4, "x": 8, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "yellow", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT value::int AS \"Rechazadas\" FROM v_process_readings WHERE src='plc-llenado-01' AND field='bad_count' ORDER BY ts DESC LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "% rechazo",
+      "description": "reject_pct de v_kpi_production_live. Sube durante episodios de calidad (~1/hora en el simulador).",
+      "gridPos": { "h": 6, "w": 4, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 3 },
+              { "color": "red", "value": 6 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT reject_pct AS \"% rechazo\" FROM v_kpi_production_live"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Drive gain (NOA)",
+      "description": "Salud del coriolis. Normal ~8%. >40% = aire arrastrado en la línea (típico en arranques).",
+      "gridPos": { "h": 6, "w": 4, "x": 16, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 40 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT round(value::numeric, 1) AS \"Drive gain\" FROM v_process_readings WHERE src='coriolis-01' AND field='drive_gain_pct' ORDER BY ts DESC LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Potencia de la celda",
+      "gridPos": { "h": 6, "w": 4, "x": 20, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT round(value::numeric, 0) AS \"Potencia\" FROM v_process_readings WHERE src='medidor-02' AND field='active_power_w' ORDER BY ts DESC LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "state-timeline",
+      "title": "Estado de línea — historial",
+      "description": "Transiciones STOPPED/STARTING/RUNNING/FAULT. Las bandas rojas (FAULT) son atascos.",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 70, "lineWidth": 0, "spanNulls": true },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "STOPPED": { "color": "text", "index": 0 },
+                "STARTING": { "color": "yellow", "index": 1 },
+                "RUNNING": { "color": "green", "index": 2 },
+                "FAULT": { "color": "red", "index": 3 }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "auto",
+        "legend": { "showLegend": false, "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT ts AS time, CASE value::int WHEN 0 THEN 'STOPPED' WHEN 1 THEN 'STARTING' WHEN 2 THEN 'RUNNING' WHEN 3 THEN 'FAULT' END AS \"Línea\" FROM v_process_readings WHERE src='plc-llenado-01' AND field='line_state' AND $__timeFilter(ts) ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Caudal — consigna vs. real",
+      "description": "La consigna la fija el PLC; el real lo mide el coriolis pasando por la dinámica de la válvula. El desfase entre ambas ES la física de la celda.",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: kg/h",
+          "min": 0,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "auto", "spanNulls": true }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Consigna (PLC)" }, "properties": [{ "id": "custom.lineStyle", "value": { "dash": [6, 4], "fill": "dash" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT ts AS time, value AS \"Real (coriolis)\" FROM v_process_readings WHERE src='coriolis-01' AND field='mass_flow_kgh' AND $__timeFilter(ts) ORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT ts AS time, value AS \"Consigna (PLC)\" FROM v_process_readings WHERE src='plc-llenado-01' AND field='target_flow_kgh' AND $__timeFilter(ts) ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Válvula — setpoint vs. posición",
+      "description": "El stiction (banda muerta de fricción) se ve al hacer zoom: la posición se pega y salta.",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "auto", "spanNulls": true }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Setpoint" }, "properties": [{ "id": "custom.lineStyle", "value": { "dash": [6, 4], "fill": "dash" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT ts AS time, value AS \"Posición\" FROM v_process_readings WHERE src='valvula-01' AND field='position_pct' AND $__timeFilter(ts) ORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT ts AS time, value AS \"Setpoint\" FROM v_process_readings WHERE src='valvula-01' AND field='setpoint_pct' AND $__timeFilter(ts) ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Drive gain — salud del coriolis (NOA)",
+      "description": "Canal de diagnóstico paralelo al lazo de control (patrón NOA). Los picos >40% son episodios de aire arrastrado — correlacionan con caídas de densidad y arranques de línea.",
+      "gridPos": { "h": 9, "w": 8, "x": 0, "y": 21 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "auto",
+            "spanNulls": true,
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 40 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "showLegend": false, "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT ts AS time, value AS \"Drive gain\" FROM v_process_readings WHERE src='coriolis-01' AND field='drive_gain_pct' AND $__timeFilter(ts) ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Densidad del producto",
+      "description": "Bebida ~1042 kg/m³. Las caídas bruscas coinciden con los picos de drive gain: flujo en dos fases.",
+      "gridPos": { "h": 9, "w": 8, "x": 8, "y": 21 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: kg/m³",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "auto", "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "showLegend": false, "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT ts AS time, value AS \"Densidad\" FROM v_process_readings WHERE src='coriolis-01' AND field='density_kgm3' AND $__timeFilter(ts) ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Potencia activa de la celda",
+      "description": "Los pulsos cuadrados son el compresor de aire (ciclo on/off). El nivel base sigue el estado de la línea.",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 21 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "min": 0,
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "showPoints": "auto", "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "showLegend": false, "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT ts AS time, value AS \"Potencia\" FROM v_process_readings WHERE src='medidor-02' AND field='active_power_w' AND $__timeFilter(ts) ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Alarmas y eventos",
+      "description": "v_alerts_recent en la ventana visible: atascos, desviaciones de válvula, transiciones de estado.",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 30 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Severidad" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "info": { "color": "text", "index": 0 },
+                      "warn": { "color": "yellow", "index": 1 },
+                      "alarm": { "color": "red", "index": 2 },
+                      "critical": { "color": "dark-red", "index": 3 }
+                    }
+                  }
+                ]
+              },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "Hora", "desc": true }] },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT ts AS \"Hora\", src AS \"Origen\", evt_type AS \"Evento\", severity AS \"Severidad\", msg AS \"Mensaje\" FROM v_alerts_recent WHERE $__timeFilter(ts) ORDER BY ts DESC LIMIT 100"
+        }
+      ]
+    }
+  ]
+}

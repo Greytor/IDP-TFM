@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <!-- Fondo del login de Authentik. Sustituye a la foto de bosque que trae por
+       defecto (branding_default_flow_background).
+
+       Brand Kit v1.0: Ink de fondo, retícula en Charcoal. La retícula es el motivo
+       del propio mark de Greytec — el cuadrado con rejilla — así que el login
+       "rima" con el logotipo sin repetirlo.
+
+       SVG y no JPG a propósito: pesa 1 KB en vez de cientos, escala a cualquier
+       pantalla sin pixelar, y se edita con un editor de texto.
+
+       SIN Electric (#f5c800): el kit lo reserva para el dato crítico. Un fondo de
+       login no es un dato crítico. Si aparece aquí, deja de significar algo allí. -->
+  <rect width="1600" height="900" fill="#141414"/>
+
+  <!-- Retícula. Muy tenue: es textura, no decoración que compita con el formulario. -->
+  <defs>
+    <pattern id="grid" width="52" height="52" patternUnits="userSpaceOnUse">
+      <path d="M52 0H0V52" fill="none" stroke="#2e2e2e" stroke-width="1"/>
+    </pattern>
+    <!-- Viñeta: oscurece los bordes para que el formulario, que va centrado,
+         tenga contraste sin necesidad de una caja. -->
+    <radialGradient id="vin" cx="50%" cy="45%" r="75%">
+      <stop offset="0%"  stop-color="#141414" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+
+  <!-- Guiño al mark: las cuatro esquinas marcadas, como en el logotipo. -->
+  <g stroke="#4a4a4a" stroke-width="2" fill="none">
+    <path d="M60 60h56M60 60v56"/>
+    <path d="M1540 60h-56M1540 60v56"/>
+    <path d="M60 840h56M60 840v-56"/>
+    <path d="M1540 840h-56M1540 840v-56"/>
+  </g>
+
+  <rect width="1600" height="900" fill="url(#vin)"/>
+</svg>

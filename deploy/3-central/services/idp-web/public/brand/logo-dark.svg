@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 241.56241 241.56241"
+   width="241.56241"
+   height="241.56241"
+   version="1.1"
+   id="svg25"
+   sodipodi:docname="Greytec_logo_dark.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs25" />
+  <sodipodi:namedview
+     id="namedview25"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.1932427"
+     inkscape:cx="407.71253"
+     inkscape:cy="76.681802"
+     inkscape:window-width="2505"
+     inkscape:window-height="1417"
+     inkscape:window-x="1967"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg25" />
+  <!-- Fondo blanco -->
+  <!-- Logo completo: 340x80 unidades originales
+       Escala objetivo: caber en 1024x241 centrado en 1280x720
+       scale = 1024/340 = 3.012
+       mark: 80*3.012 = 241px
+       offset x = (1280-1024)/2 = 128
+       offset y = (720-241)/2 = 240
+  -->
+  <line
+     x1="42.469208"
+     y1="3.3132"
+     x2="42.469208"
+     y2="238.24921"
+     stroke="#2a2a2a"
+     stroke-width="1.506"
+     id="line2" />
+  <line
+     x1="81.625214"
+     y1="3.3132"
+     x2="81.625214"
+     y2="238.24921"
+     stroke="#2a2a2a"
+     stroke-width="1.506"
+     id="line3" />
+  <line
+     x1="120.7812"
+     y1="3.3132"
+     x2="120.7812"
+     y2="238.24921"
+     stroke="#2a2a2a"
+     stroke-width="1.506"
+     id="line4" />
+  <line
+     x1="159.93719"
+     y1="3.3132"
+     x2="159.93719"
+     y2="238.24921"
+     stroke="#2a2a2a"
+     stroke-width="1.506"
+     id="line5" />
+  <line
+     x1="199.0932"
+     y1="3.3132"
+     x2="199.0932"
+     y2="238.24921"
+     stroke="#2a2a2a"
+     stroke-width="1.506"
+     id="line6" />
+  <line
+     x1="3.3132"
+     y1="42.469208"
+     x2="238.24921"
+     y2="42.469208"
+     stroke="#2a2a2a"
+     stroke-width="1.506"
+     id="line7" />
+  <line
+     x1="3.3132"
+     y1="81.625214"
+     x2="238.24921"
+     y2="81.625214"
+     stroke="#2a2a2a"
+     stroke-width="1.506"
+     id="line8" />
+  <line
+     x1="3.3132"
+     y1="120.78122"
+     x2="238.24921"
+     y2="120.78122"
+     stroke="#2a2a2a"
+     stroke-width="1.506"
+     id="line9" />
+  <line
+     x1="3.3132"
+     y1="159.93719"
+     x2="238.24921"
+     y2="159.93719"
+     stroke="#2a2a2a"
+     stroke-width="1.506"
+     id="line10" />
+  <line
+     x1="3.3132"
+     y1="199.0932"
+     x2="238.24921"
+     y2="199.0932"
+     stroke="#2a2a2a"
+     stroke-width="1.506"
+     id="line11" />
+  <rect
+     x="21.385206"
+     y="187.0452"
+     width="18.072001"
+     height="30.120001"
+     fill="#f0efed"
+     id="rect11"
+     style="stroke-width:3.012" />
+  <rect
+     x="51.505203"
+     y="138.85321"
+     width="18.072001"
+     height="78.311996"
+     fill="#f0efed"
+     id="rect12"
+     style="stroke-width:3.012" />
+  <rect
+     x="81.625214"
+     y="84.637207"
+     width="18.072001"
+     height="132.528"
+     fill="#f0efed"
+     id="rect13"
+     style="stroke-width:3.012" />
+  <rect
+     x="111.74521"
+     y="48.493195"
+     width="18.072001"
+     height="168.672"
+     fill="#f0efed"
+     id="rect14"
+     style="stroke-width:3.012" />
+  <rect
+     x="141.8652"
+     y="96.685211"
+     width="18.072001"
+     height="120.48"
+     fill="#b0b0b0"
+     id="rect15"
+     style="stroke-width:3.012" />
+  <rect
+     x="171.9852"
+     y="150.90121"
+     width="18.072001"
+     height="66.264"
+     fill="#666666"
+     id="rect16"
+     style="stroke-width:3.012" />
+  <rect
+     x="202.10519"
+     y="187.0452"
+     width="18.072001"
+     height="30.120001"
+     fill="#3a3a3a"
+     id="rect17"
+     style="stroke-width:3.012" />
+  <line
+     x1="3.3132"
+     y1="3.3132"
+     x2="27.409208"
+     y2="3.3132"
+     stroke="#f0efed"
+     stroke-width="6.6264"
+     id="line17" />
+  <line
+     x1="3.3132"
+     y1="3.3132"
+     x2="3.3132"
+     y2="27.409208"
+     stroke="#f0efed"
+     stroke-width="6.6264"
+     id="line18" />
+  <line
+     x1="238.24921"
+     y1="3.3132"
+     x2="214.1532"
+     y2="3.3132"
+     stroke="#f0efed"
+     stroke-width="6.6264"
+     id="line19" />
+  <line
+     x1="238.24921"
+     y1="3.3132"
+     x2="238.24921"
+     y2="27.409208"
+     stroke="#f0efed"
+     stroke-width="6.6264"
+     id="line20" />
+  <line
+     x1="3.3132"
+     y1="238.24921"
+     x2="27.409208"
+     y2="238.24921"
+     stroke="#f0efed"
+     stroke-width="6.6264"
+     id="line21" />
+  <line
+     x1="3.3132"
+     y1="238.24921"
+     x2="3.3132"
+     y2="214.1532"
+     stroke="#f0efed"
+     stroke-width="6.6264"
+     id="line22" />
+  <line
+     x1="238.24921"
+     y1="238.24921"
+     x2="214.1532"
+     y2="238.24921"
+     stroke="#f0efed"
+     stroke-width="6.6264"
+     id="line23" />
+  <line
+     x1="238.24921"
+     y1="238.24921"
+     x2="238.24921"
+     y2="214.1532"
+     stroke="#f0efed"
+     stroke-width="6.6264"
+     id="line24" />
+  <rect
+     x="3.3132"
+     y="3.3132"
+     width="234.936"
+     height="234.936"
+     fill="none"
+     stroke="#f0efed"
+     stroke-width="4.2168"
+     id="rect2" />
+</svg>

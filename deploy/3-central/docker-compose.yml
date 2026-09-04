@@ -1,0 +1,302 @@
+services:
+
+  # ─── MQTT Broker central ────────────────────────────────────────────────────
+  emqx:
+    image: emqx/emqx:5.8.3
+    container_name: greytec-emqx
+    restart: unless-stopped
+    ports:
+      - "1883:1883"    # MQTT TCP
+      - "18083:18083"  # Dashboard web
+    environment:
+      EMQX_NODE_NAME: "emqx@emqx"
+      EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USER}
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD}
+    volumes:
+      - emqx_data:/opt/emqx/data
+      - emqx_log:/opt/emqx/log
+    healthcheck:
+      # NO usamos `emqx ctl status`: en 5.8.3 falla con "node not responding to pings"
+      # (la distribución Erlang no conecta) aunque el broker esté sano. Cosmético pero
+      # rompe el check. La imagen tampoco trae curl/wget para el endpoint HTTP /status.
+      # Verificamos lo que de verdad importa: que el listener MQTT 1883 acepte conexiones,
+      # vía /dev/tcp de bash (bash sí está en la imagen; sin dependencias externas).
+      test: ["CMD-SHELL", "timeout 3 bash -c 'echo > /dev/tcp/localhost/1883'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    networks:
+      - greytec-central
+
+  # ─── Streaming / log inmutable (Kafka API compatible) ───────────────────────
+  # Integración EMQX → Redpanda se configura en Issue 1.3-A
+  redpanda:
+    image: redpandadata/redpanda:v24.3.7
+    container_name: greytec-redpanda
+    restart: unless-stopped
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr internal://redpanda:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr redpanda:33145
+      - --advertise-rpc-addr redpanda:33145
+      - --mode dev-container
+      - --smp 1
+      - --memory 1G
+      - --default-log-level=warn
+    ports:
+      - "9092:9092"    # Kafka API (interno Docker)
+      - "19092:19092"  # Kafka API (acceso desde host)
+      - "8081:8081"    # Schema Registry
+      - "8082:8082"    # HTTP Proxy
+      - "9644:9644"    # Admin API
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      # Healthcheck oficial de Redpanda: el cluster reporta Healthy: true
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    networks:
+      - greytec-central
+
+  # ─── Redpanda Console (web UI para explorar topics y mensajes) ───────────────
+  redpanda-console:
+    image: redpandadata/console:v2.7.2
+    container_name: greytec-redpanda-console
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_BROKERS: "redpanda:9092"
+      KAFKA_SCHEMAREGISTRY_ENABLED: "true"
+      KAFKA_SCHEMAREGISTRY_URLS: "http://redpanda:8081"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks:
+      - greytec-central
+
+  # ─── Time-series + relacional (PostgreSQL 15 + extensión TimescaleDB) ────────
+  timescaledb:
+    image: timescale/timescaledb:2.17.2-pg15
+    container_name: greytec-timescaledb
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready responde 0 solo cuando Postgres acepta conexiones
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - greytec-central
+  mqtt-bridge:
+    image: redpandadata/connect:4
+    container_name: greytec-mqtt-bridge
+    restart: unless-stopped
+    environment:
+      MQTT_HOST: emqx
+      MQTT_PORT: "1883"
+      MQTT_USER: ${BRIDGE_MQTT_USER}
+      MQTT_PASSWORD: ${BRIDGE_MQTT_PASSWORD}
+      MQTT_TOPIC: "greytec/#"
+      KAFKA_BOOTSTRAP: "redpanda:9092"
+      # Redpanda Connect (ex-Benthos) es Go, y el recolector de Go NO lee el
+      # límite del cgroup: ve los ~10 GB de la VM y deja crecer el heap hasta que
+      # Docker lo mata por OOM. Es exactamente el saga de Telegraf del sprint 1.2
+      # (ver journal 1.2 §Aprendido), en un servicio donde no se había aplicado.
+      #
+      # Sin esto, subir el límite solo mueve la pared: crecería hasta el nuevo tope
+      # y moriría igual. GOMEMLIMIT es lo que hace que los 512M signifiquen algo.
+      # ~90% del cap, dejando aire para stacks y runtime (mismo criterio que Telegraf).
+      GOMEMLIMIT: "460MiB"
+    volumes:
+      - ./consumers/mqtt-bridge/mqtt-to-redpanda.yaml:/connect.yaml:ro
+    command: run /connect.yaml
+    # Sin healthcheck propio: la imagen de Connect es mínima (sin shell/curl garantizados).
+    # Su modo de fallo es crash → lo cubre restart: unless-stopped.
+    depends_on:
+      emqx:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          # 256M → 512M. Este contenedor procesa TODO el UNS; iba al 88% del tope
+          # anterior y su modo de fallo (OOM → reinicio) abría huecos en el
+          # historiador. El tope y GOMEMLIMIT se suben JUNTOS: uno sin el otro no
+          # arregla nada.
+          memory: 512M
+    networks:
+      - greytec-central
+
+  # ─── Pipeline: Redpanda → TimescaleDB (1.3-B) ────────────────────────────────
+  # Consumer Kafka que enruta por categoría (contrato UNS):
+  #   dat/raw + dat/der + diag → sensor_readings | sts → device_status | evt → alerts
+  # INSERT ON CONFLICT DO NOTHING + commit manual = effectively-once.
+  redpanda-to-tsdb:
+    build: ./consumers/redpanda-to-tsdb
+    container_name: greytec-tsdb-writer
+    restart: unless-stopped
+    environment:
+      KAFKA_BOOTSTRAP: "redpanda:9092"
+      # dat.raw admite un segmento extra opcional: la variable en topics v0.3 (…dat.raw.mass_flow_kgh)
+      KAFKA_PATTERN: "^greytec\\..*\\.(dat\\.raw(\\.[a-z0-9_]+)?|dat\\.der|sts|diag|evt)$$"
+      KAFKA_GROUP: "greytec-tsdb-writer"
+      PG_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB}"
+    # Arranca solo cuando broker y DB responden. El retry interno de main.py se queda:
+    # depends_on ordena el ARRANQUE; el retry protege contra caídas en CALIENTE.
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - greytec-central
+
+  # ─── API de aplicación (FastAPI) — capa de servicio sobre silver/gold ────────
+  # Consumidor analítico (contrato §10.2): expone las vistas como endpoints HTTP
+  # para PowerBI, web, móvil y otros consumidores externos.
+  api:
+    build: ./services/idp-api
+    image: greytec-idp-api
+    container_name: greytec-api
+    restart: unless-stopped
+    # SIN `ports:` a propósito. La API solo se alcanza por `web` (nginx) o por la
+    # red interna del compose. Publicarla al host la dejaba accesible en
+    # 10.10.20.130:8000 saltándose el proxy — y con la Familia 4 eso significa
+    # reescribir kpi_catalog, o sea qué se publica en el UNS (ADR-021, ADR-024).
+    # Un solo punto de entrada es un solo punto que auditar y que autenticar.
+    environment:
+      PG_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB}"
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      # ISSUER: identificador que viaja en el token. Se compara como texto.
+      # JWKS_URL: dónde se bajan las claves — por DENTRO de la red de Docker.
+      #   No son la misma URL a propósito, y esa asimetría es correcta: el issuer
+      #   es un nombre, el JWKS es una dirección.
+      # El huso de la planta que sirve GET /api/v1/config a la SPA. La MISMA
+      # variable del .env que alimenta al motor de reportes: una sola verdad.
+      SITE_TZ: ${REPORT_SITE_TZ:-America/Guayaquil}
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    healthcheck:
+      # La imagen trae Python (no curl): urlopen lanza excepción si no es 2xx → exit≠0
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - greytec-central
+  web:
+    build: ./services/idp-web
+    image: greytec-idp-web
+    container_name: greytec-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      # En esta edición nginx atiende CUALQUIER host (server_name _): el despliegue
+      # no depende de un dominio, se entra por http://localhost. La variable se
+      # conserva porque la imagen oficial sustituye la plantilla con envsubst al
+      # arrancar, y porque una instalación real sí querrá fijar su nombre.
+      SERVER_NAME: ${WEB_SERVER_NAME:-localhost}
+      # Acota qué se sustituye. Sin filtro, envsubst reemplaza TODA variable de
+      # entorno definida — y el contenedor trae HOSTNAME, PATH, etc.
+      NGINX_ENVSUBST_FILTER: "^(SERVER_NAME)$$"
+    depends_on:
+      # Sin condition a propósito: nginx resuelve los nombres de `upstream` AL
+      # ARRANCAR y aborta si no existen ("host not found in upstream"). Basta con
+      # que los contenedores estén creados. Exigir service_healthy sería peor: una
+      - api
+      - grafana
+    healthcheck:
+      # 127.0.0.1 y no localhost: en Alpine `localhost` resuelve primero a ::1, y
+      # `listen 80` solo hace bind a IPv4 → "connection refused" con el servicio
+      # perfectamente sano. No se añade `listen [::]:80` porque nginx aborta el
+      # arranque si el kernel trae IPv6 deshabilitado; la IP explícita no depende
+      # de resolución ni de familia de direcciones.
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 64M   # sirve archivos estáticos y proxea; no necesita más
+    networks:
+      - greytec-central
+
+  # ─── Visualización ───────────────────────────────────────────────────────────
+  # Datasource TimescaleDB configurado desde la UI (Connections → Data sources).
+  #
+
+  grafana:
+    image: grafana/grafana-oss:11.4.0
+    container_name: greytec-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"   # acceso directo: no hay proxy por dominio en esta edición
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      # Acceso anónimo de solo lectura para el demo (datos simulados, sin riesgo real).
+      # Alcance a los 4 dashboards del demo vía carpeta + permisos (ver dashboards/README.md) —
+      # no vía "Public dashboard" por tablero (no soporta navegación entre públicos).
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_NAME: "GREYTEC"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    healthcheck:
+      # La imagen de Grafana trae wget (busybox), no curl
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - greytec-central
+
+networks:
+  greytec-central:
+    driver: bridge
+
+volumes:
+  emqx_data:
+  emqx_log:
+  redpanda_data:
+  timescaledb_data:
+  grafana_data:

@@ -1,0 +1,40 @@
+input:
+  mqtt:
+    urls: ["tcp://${MQTT_HOST}:${MQTT_PORT}"]
+    topics: ["${MQTT_TOPIC}"]
+    # client_id ESTABLE: es lo que permite que la sesión durable de abajo funcione.
+    # Si cambiara en cada arranque, EMQX crearía una sesión nueva cada vez y el
+    # clean_session:false no serviría de nada.
+    client_id: greytec-rpc-bridge
+    user: "${MQTT_USER}"
+    password: "${MQTT_PASSWORD}"
+    qos: 1
+
+    # clean_session: FALSE — store-and-forward en el salto EMQX → Redpanda.
+    #
+    # Con `true` (como estaba), EMQX descartaba la sesión al desconectarse el
+    # bridge, y TODO lo publicado mientras estaba caído se perdía para siempre: no
+    # llegaba a Redpanda ni al historiador. Un simple reinicio del contenedor
+    # abría un agujero en el UNS.
+    #
+    # Es el mismo principio que ya aplica el edge: el bridge de NanoMQ usa
+    # `clean_start = false` justamente para esto. El pipeline tenía un salto
+    # durable (Brix → EMQX) y uno que goteaba (EMQX → Redpanda). Ahora los dos
+    # aguantan.
+    #
+    # Límite conocido: EMQX encola hasta `max_mqueue_len` mensajes por sesión
+    # offline (1000 por defecto). Cubre de sobra un reinicio de contenedor, pero
+    # NO una caída larga. Si hiciera falta, se sube en la config de EMQX.
+    clean_session: false
+
+pipeline:
+  processors:
+    - mapping: |
+        root = this
+        root.mqtt_topic = @mqtt_topic
+
+output:
+  kafka_franz:
+    seed_brokers: ["${KAFKA_BOOTSTRAP}"]
+    topic: ${! @mqtt_topic.replace_all("/", ".") }
+    key: ${! @mqtt_topic }

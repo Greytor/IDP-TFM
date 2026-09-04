@@ -1,0 +1,111 @@
+# ─── Mapa de rutas del IDP ───────────────────────────────────────────────────
+# PRODUCTO: idéntico en todos los clientes. Lo único que varía es ${SERVER_NAME}.
+#
+# Detrás va el túnel Cloudflare, que termina TLS y llega aquí por HTTP al :80.
+# Por eso aquí no hay certificados ni redirección a https: esa responsabilidad ya
+# está resuelta antes de llegar.
+
+upstream idp_api       { server api:8000; }
+
+# El túnel ya dice por qué esquema entró el cliente. Se PROPAGA, no se inventa:
+# si se pusiera $scheme a secas, la API vería "http" detrás de un dominio https y
+# generaría enlaces rotos. El default cubre el caso de entrar directo por LAN.
+map $http_x_forwarded_proto $fwd_proto {
+    default $http_x_forwarded_proto;
+    ''      $scheme;
+}
+
+# Handshake de WebSocket: el cliente manda "Upgrade: websocket" y el proxy debe
+# reenviar "Connection: upgrade". En una petición normal no hay Upgrade, y entonces
+# hay que mandar "close" — no una cabecera vacía. Lo usa Grafana Live.
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name _;      # cualquier host: no hace falta dominio
+
+    # Un PDF de 30 días tarda; el resto de la API es rápida. El límite se sube
+    client_max_body_size 4m;
+
+    # Sonda del healthcheck del contenedor. No depende de que exista el index.
+    location = /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
+    # ── API de reportes ──────────────────────────────────────────────────────
+    # Gana sobre /api/v1/ por ser el prefijo MÁS LARGO. En nginx los prefijos se
+    # eligen por longitud, NO por el orden en el archivo: cambiar estos bloques de
+    # sitio no altera nada.
+    #
+    # nginx recortaría el prefijo y el servicio devolvería 404.
+
+
+    # ── Salud de la API ──────────────────────────────────────────────────────
+    # Vive en la raíz (no bajo /api/v1), así que necesita su propio bloque o el
+    # `location /` lo serviría con el index estático — devolviendo 200 aunque la
+    # API estuviera muerta, que es peor que un error.
+    location = /health {
+        proxy_pass http://idp_api;
+        proxy_set_header Host $host;
+        access_log off;
+    }
+
+    # ── API principal (UNS, KPIs, alertas, administración) ───────────────────
+    location /api/v1/ {
+        proxy_pass http://idp_api;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_set_header X-Forwarded-Host  $host;
+    }
+
+    # ── Spec OpenAPI de la API ───────────────────────────────────────────────
+    # /docs YA NO SE PUBLICA (2026-07-17): era "conveniencia mientras no exista
+    # el explorador de la consola", y el explorador existe — tras login y rol.
+    # Un Swagger anónimo en internet regalaba el mapa completo de la API.
+    # La spec sigue enrutada porque la pide el explorador, pero la API la exige
+    # con token válido: anónimo → 401.
+    location /openapi.json { proxy_pass http://idp_api; proxy_set_header Host $host; }
+
+    # Grafana NO se sirve bajo /grafana/ — vive en su propio dominio, en el bloque
+    # server de abajo. Es deliberado: son dos audiencias distintas (el demo público
+    # enlazado desde la web corporativa vs. la herramienta de venta) y así Grafana
+    # conserva un único root_url, sin serve_from_sub_path.
+
+    # ── Activos de marca ─────────────────────────────────────────────────────
+    # https://${SERVER_NAME}/brand/logo-full-dark.svg) y aquí lo leerá la app de React.
+    #
+    # Deben ser públicos y sin token: el navegador los pide ANTES de que exista
+    # ninguna sesión — precisamente para pintar la pantalla de login.
+    #
+    # ⚠️ ESTA CARPETA SE PUBLICA A INTERNET ENTERA. Solo van aquí los archivos que
+    # el NAVEGADOR necesita descargar: logos y fondos. Nada de documentación ni de
+    # material interno. El kit de marca estuvo aquí un rato y quedó servido en
+    # https://…/brand/kit-marca.html a quien lo pidiera. Vive en
+    # docs/contracts/brand-kit.html — IP compartida y NO entregable (golden-stack §2).
+    #
+    # Nombres: el sufijo dice PARA QUÉ FONDO es, no de qué color:
+    #   -dark  → tinta clara, para fondo oscuro (el login)
+    #   -light → tinta oscura, para fondo claro (el PDF)
+    location /brand/ {
+        root      /usr/share/nginx/html;
+        expires   7d;          # son estables; que el navegador no los repida
+        access_log off;
+    }
+
+    # ── La app ───────────────────────────────────────────────────────────────
+    # try_files ... /index.html: el routing de una SPA lo resuelve el navegador,
+    # así que cualquier ruta desconocida devuelve el index y React decide. Sin
+    # esto, recargar /admin daría 404.
+    location / {
+        root      /usr/share/nginx/html;
+        try_files $uri $uri/ /index.html;
+    }
+}
+

@@ -1,0 +1,29 @@
+{
+  "name": "greytec-idp-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Frontend del Greytec IDP — SPA React servida por el nginx del borde (ADR-022/023)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource/exo-2": "^5.2.5",
+    "@fontsource/orbitron": "^5.2.5",
+    "@tanstack/react-query": "^5.62.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.1.0",
+    "swagger-ui-dist": "^5.18.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/swagger-ui-dist": "^3.30.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}

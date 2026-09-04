@@ -1,0 +1,38 @@
+/* Brand Kit v1.0 — docs/contracts/brand-kit.html. Mismos tokens que el reporte
+   PDF (idp-reports/app/templates/production.html) y que el login de Authentik.
+
+   Reglas que este CSS hace cumplir por construcción:
+   · Electric #F5C800 SOLO para el dato crítico, y NUNCA sobre fondo claro
+     (1.3:1 sobre Linen — ilegible). Siempre sobre Ink/Charcoal.
+   · Orbitron 800 SOLO para el logotipo (clase .wordmark). Exo 2 todo lo demás.
+   · Slate sobre Linen solo en texto grande o etiquetas, nunca body. */
+:root {
+  --ink:         #141414;
+  --charcoal:    #2e2e2e;
+  --iron:        #4a4a4a;
+  --slate:       #8c8c8c;
+  --rule:        #c8c7c4;
+  --mist:        #e8e7e4;
+  --linen:       #f5f4f2;
+  --parchment:   #f0efed;
+  --electric:    #f5c800;
+  --electric-dk: #a08800;
+  --electric-tint: #fff8cc;
+  --steel-dk:    #4a5058;
+  --steel-mid:   #7a8490;
+  --steel:       #a8b4bc;
+  --steel-tint:  #e8ecf0;
+  --online:      #1e6b3c;
+  --warning:     #b45309;
+  --fault:       #991b1b;
+
+  --display: 'Orbitron', sans-serif;   /* SOLO logotipo */
+  --body:    'Exo 2', system-ui, sans-serif;
+
+  /* Derivados del kit para la app (composición observada en el DMP) */
+  --sidebar-w: 232px;
+  --card-bg: #ffffff;
+  --card-border: var(--rule);
+  --dark-card-bg: #1c1c1c;
+  --dark-hairline: #232323;
+}

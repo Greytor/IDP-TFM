@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GREYTEC IDP</title>
+<style>
+  /* Brand Kit v1.0 — mismos tokens que el reporte PDF.
+     Electric SOLO en el dato crítico y NUNCA sobre fondo claro (1.3:1). */
+  :root {
+    --ink:#141414; --iron:#4a4a4a; --slate:#8c8c8c; --rule:#c8c7c4;
+    --mist:#e8e7e4; --linen:#f5f4f2; --electric:#f5c800;
+    --online:#1e6b3c; --fault:#991b1b; --steel:#a8b4bc;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Exo 2',system-ui,-apple-system,sans-serif; color:var(--ink);
+         background:var(--linen); line-height:1.5; padding:40px 24px; }
+  .wrap { max-width:720px; margin:0 auto; }
+  header { border-bottom:1px solid var(--rule); padding-bottom:20px; margin-bottom:28px; }
+  h1 { font-size:26px; font-weight:800; letter-spacing:-0.4px; }
+  .tag { font-size:10px; letter-spacing:2px; text-transform:uppercase;
+         color:var(--slate); margin-top:6px; }
+  .note { background:var(--ink); color:#fff; padding:14px 16px; margin-bottom:28px;
+          border-left:3px solid var(--electric); font-size:14px; }
+  .note b { color:var(--electric); }
+  h2 { font-size:13px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
+       color:var(--slate); margin:0 0 10px; }
+  ul { list-style:none; }
+  li { display:flex; align-items:center; gap:10px; padding:9px 0;
+       border-bottom:1px solid var(--mist); font-size:14px; }
+  code { font-family:ui-monospace,'Cascadia Code',monospace; font-size:13px; }
+  a { color:var(--ink); }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--rule); flex:0 0 8px; }
+  .ok   { background:var(--online); }
+  .bad  { background:var(--fault); }
+  .res { margin-left:auto; font-size:11px; color:var(--slate);
+         font-variant-numeric:tabular-nums; }
+  .embed { margin-top:28px; }
+  .veredicto { padding:12px 14px; font-size:13px; border-left:3px solid var(--rule);
+               background:var(--mist); margin-bottom:10px; }
+  .veredicto.si  { border-left-color:var(--online); }
+  .veredicto.no  { border-left-color:var(--fault); }
+  .marco { border:1px solid var(--rule); height:420px; background:var(--mist);
+           position:relative; }
+  .marco iframe { width:100%; height:100%; border:0; display:block; }
+  footer { margin-top:32px; padding-top:14px; border-top:1px solid var(--rule);
+           font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--slate); }
+  @media (prefers-color-scheme: dark) {
+    body { background:#101010; color:#f0efed; }
+    li { border-color:#2a2a2a; } a { color:#f0efed; }
+    header, footer { border-color:#2a2a2a; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>GREYTEC IDP</h1>
+    <div class="tag">Diagnóstico del proxy</div>
+  </header>
+
+  <div class="note">
+    <b>Página de diagnóstico.</b> Hasta el Sprint 2.2 esta página era el
+    <code>index.html</code> de relleno; ahora la app de React ocupa la raíz y esta
+    sonda vive en <code>/proxy-check.html</code>. Sigue sirviendo para lo mismo:
+    comprobar de un vistazo que el borde (nginx) enruta, sin entrar al servidor.
+  </div>
+
+  <h2>Rutas del proxy</h2>
+  <ul id="rutas">
+    <li data-url="/healthz"><span class="dot"></span><code>/healthz</code><span class="res">…</span></li>
+    <li data-url="/api/v1/kpi"><span class="dot"></span><code>/api/v1/kpi</code><span class="res">…</span></li>
+    <li data-url="/api/v1/admin/health" data-ok="401"><span class="dot"></span><code>/api/v1/admin/health</code><span class="res">…</span></li>
+    <li data-url="/api/v1/uns/topics"><span class="dot"></span><code>/api/v1/uns/topics</code><span class="res">…</span></li>
+    <li data-url="/api/v1/reports/production" data-ok="405">
+      <span class="dot"></span><code>/api/v1/reports/…</code><span class="res">…</span></li>
+    <li data-url="/openapi.json" data-ok="401"><span class="dot"></span><code>/openapi.json</code><span class="res">…</span></li>
+  </ul>
+
+  <!-- La prueba del embebido. Esto es exactamente lo que hace la vista de demo, y
+       sirve para responder "¿está activo el embedding?" sin inspeccionar cabeceras
+       a mano.
+       El dominio va escrito aquí porque esto es una página de diagnóstico; la app
+       de React lo toma de su config.
+
+       ?kiosk  → esconde el cromo de Grafana (logo, buscador, "Sign in", migas de
+                 navegación, Share) y CONSERVA la fila de controles: los 3 botones
+                 de vista, el selector de tiempo y el refresco.
+                 Ojo: eso vale para Grafana >= 11.3, donde esos controles se
+                 movieron al panel de contenido. En versiones anteriores `?kiosk`
+                 lo escondía TODO y para esto se usaba `kiosk=tv`, que ya no existe.
+                 O sea: el comportamiento que aquí nos sirve, en el repo de Grafana
+                 está reportado como regresión (issue #98724). Si algún día lo
+                 "arreglan", este iframe perderá los controles y habrá que ponerlos
+                 en la propia app — que es a donde fue el Sprint 2.2 de todos modos.
+
+  -->
+  <div class="embed">
+    <h2>Grafana embebido</h2>
+    <div class="veredicto" id="veredicto">Comprobando…</div>
+    <div class="marco">
+      <iframe id="gf" title="Grafana"
+              src="https://monitor.greytec.ec/d/greytec-operador/greytec-e28094-operador?kiosk&amp;refresh=10s"></iframe>
+    </div>
+  </div>
+
+  <footer>Greytec S.A.S. · Datos del Unified Namespace</footer>
+</div>
+
+<script>
+// Sonda de las rutas. Sirve para una cosa concreta: si /api/v1/kpi responde desde
+// AQUÍ, el proxy funciona — no hace falta entrar al servidor a hacer curl.
+//
+// data-ok=<código>: hay rutas donde la respuesta "buena" NO es un 200.
+//
+//   405 → el endpoint de reportes es POST; sondearlo con GET devuelve 405, y eso
+//         significa que la petición LLEGÓ al servicio. Un 404 sería lo malo:
+//         querría decir que nginx no enrutó y sirvió el index estático.
+//   401 → la Familia 4 exige token con rol admin, y esta página no manda ninguno.
+//         Un 401 aquí es el gateo FUNCIONANDO. Si algún día ves un 200 en esta
+//         fila, tienes un problema serio: la administración quedó abierta.
+//
+// Pintar estos casos en rojo sería mentir — y peor, acostumbraría a ignorar rojos.
+document.querySelectorAll('#rutas li[data-url]').forEach(async li => {
+  const dot = li.querySelector('.dot'), res = li.querySelector('.res');
+  const esperado = li.dataset.ok ? Number(li.dataset.ok) : null;
+  const t0 = performance.now();
+  try {
+    const r = await fetch(li.dataset.url, { method: 'GET' });
+    const bien = esperado ? r.status === esperado : r.ok;
+    dot.classList.add(bien ? 'ok' : 'bad');
+    const ms = Math.round(performance.now() - t0);
+    const nota = { 405: 'ruta viva (es POST)', 401: 'protegida — el gateo funciona' };
+    res.textContent = esperado && bien
+      ? `${r.status} · ${nota[esperado] || 'esperado'}`
+      : `${r.status} · ${ms} ms`;
+  } catch (e) {
+    dot.classList.add('bad');
+    res.textContent = 'sin respuesta';
+  }
+});
+
+// ── El veredicto del embebido es VISUAL, y no por pereza ─────────────────────
+// El navegador NO deja que este JS averigüe si el iframe fue bloqueado. Es a
+// propósito: si se pudiera, cualquier página maliciosa podría sondear en silencio
+// qué sitios son embebibles. El bloqueo es opaco para quien embebe — que es
+// justo el punto de X-Frame-Options.
+//
+// Así que la prueba es mirar el marco de abajo. Lo que sí se puede es decir qué
+// hay que buscar, y dónde está la evidencia definitiva.
+(() => {
+  const v = document.getElementById('veredicto');
+  const gf = document.getElementById('gf');
+  const pinta = (clase, html) => { v.className = 'veredicto ' + clase; v.innerHTML = html; };
+
+  gf.addEventListener('load', () => {
+    setTimeout(() => {
+      pinta('si', '<b>Si ves el dashboard abajo, el embebido funciona</b> — y lo hace ' +
+                 'acotado: <code>frame-ancestors</code> solo autoriza a este IDP. ' +
+                 'Grafana sigue mandando <code>X-Frame-Options: deny</code>, pero el ' +
+                 'navegador la ignora porque <code>frame-ancestors</code> la obsoleta ' +
+                 '(CSP Level 2) — y eso deja el <code>deny</code> como respaldo para ' +
+                 'navegadores antiguos. Marco en blanco = algo tumbó la cabecera de nginx.');
+    }, 1200);
+  });
+
+  setTimeout(() => {
+    if (v.textContent.startsWith('Comprobando')) {
+      pinta('no', 'El iframe no cargó en 8 s. Comprueba que <code>monitor.greytec.ec</code> ' +
+                  'responde por su cuenta en otra pestaña.');
+    }
+  }, 8000);
+})();
+</script>
+</body>
+</html>

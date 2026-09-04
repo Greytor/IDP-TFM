@@ -1,0 +1,195 @@
+{
+  "uid": "greytec-home",
+  "title": "Greytec IDP — Demo",
+  "description": "Vista de aterrizaje del demo: estado en vivo de la celda de llenado y navegación hacia las vistas por rol (Operador / Supervisor / Gerencia).",
+  "tags": ["greytec-demo"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "graphTooltip": 0,
+  "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": { "list": [] },
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Vistas",
+      "tags": ["greytec-demo"],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": false,
+      "icon": "dashboard",
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Estado de la línea",
+      "description": "Último line_state publicado por plc-llenado-01 (RBE: si no cambia, heartbeat cada 30 s).",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "STOPPED": { "color": "text", "index": 0 },
+                "STARTING": { "color": "yellow", "index": 1 },
+                "RUNNING": { "color": "green", "index": 2 },
+                "FAULT": { "color": "red", "index": 3 }
+              }
+            }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "text", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT CASE value::int WHEN 0 THEN 'STOPPED' WHEN 1 THEN 'STARTING' WHEN 2 THEN 'RUNNING' WHEN 3 THEN 'FAULT' END AS \"Estado\" FROM v_process_readings WHERE src='plc-llenado-01' AND field='line_state' ORDER BY ts DESC LIMIT 1"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "OEE — últimas 24 h",
+      "description": "Promedio de v_oee_hourly en las últimas 24 horas.",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "green", "value": 70 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT round(avg(oee_pct)::numeric, 1) AS \"OEE\" FROM v_oee_hourly WHERE hour > now() - interval '24 hours'"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Botellas producidas hoy",
+      "description": "Suma de v_production_hourly desde las 00:00 de hoy.",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT coalesce(sum(produced), 0) AS \"Botellas\" FROM v_production_hourly WHERE hour >= date_trunc('day', now())"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Alertas — últimas 24 h",
+      "description": "Eventos con severidad en v_alerts_recent (atascos, desviaciones de válvula, cambios de estado).",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT count(*) AS \"Alertas\" FROM v_alerts_recent WHERE ts > now() - interval '24 hours'"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "title": "",
+      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 6 },
+      "options": {
+        "mode": "markdown",
+        "content": "# 👷 Operador\n\n**Tiempo real de la celda de llenado.**\n\nCaudal consigna vs. real, posición de válvula, estado de línea, salud del caudalímetro (drive gain — patrón NOA) y tabla de alarmas.\n\n*Ventana: última hora · refresco 10 s*\n\n## [→ Abrir vista Operador](/d/greytec-operador)"
+      }
+    },
+    {
+      "id": 6,
+      "type": "text",
+      "title": "",
+      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 6 },
+      "options": {
+        "mode": "markdown",
+        "content": "# 📋 Supervisor\n\n**El turno en números.**\n\nProducción y calidad por hora, disponibilidad de línea (RUNNING/FAULT/STOPPED), throughput real vs. nominal y consumo energético.\n\n*Ventana: últimas 24 h · refresco 1 min*\n\n## [→ Abrir vista Supervisor](/d/greytec-supervisor)"
+      }
+    },
+    {
+      "id": 7,
+      "type": "text",
+      "title": "",
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 6 },
+      "options": {
+        "mode": "markdown",
+        "content": "# 📈 Gerencia\n\n**Tendencias de negocio.**\n\nOEE y sus componentes (disponibilidad × calidad × performance), producción por día, energía e intensidad energética (Wh por botella).\n\n*Ventana: últimos 30 días · refresco 5 min*\n\n## [→ Abrir vista Gerencia](/d/greytec-gerencia)"
+      }
+    }
+  ]
+}

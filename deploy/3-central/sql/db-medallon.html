@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base de datos IDP — arquitectura medallón</title>
+<style>
+  :root {
+    --bg: #f3f5f7; --surface: #ffffff; --surface-2: #eaedf1;
+    --ink: #1b232d; --ink-soft: #515c6a; --ink-faint: #8894a2; --border: #d7dce2;
+    --bronze: #a56537; --bronze-bg: #f4e7dc; --bronze-edge: #d7b28d;
+    --silver: #566575; --silver-bg: #e7ebf0; --silver-edge: #b6c0cc;
+    --gold:   #94721a; --gold-bg: #f3ecd2; --gold-edge: #d8c37f;
+    --serve:  #2c7a72; --serve-bg: #d9ebe8; --serve-edge: #9fcfc8;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --maxw: 1120px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12161c; --surface: #1b212a; --surface-2: #222a34;
+      --ink: #e7ecf2; --ink-soft: #a4b0be; --ink-faint: #6b7889; --border: #2c3641;
+      --bronze: #d09562; --bronze-bg: #2c2117; --bronze-edge: #573f26;
+      --silver: #9fb2c6; --silver-bg: #1e2630; --silver-edge: #384654;
+      --gold:   #d4b45c; --gold-bg: #282314; --gold-edge: #544a27;
+      --serve:  #4fb3a6; --serve-bg: #142d29; --serve-edge: #2b5751;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f3f5f7; --surface: #ffffff; --surface-2: #eaedf1;
+    --ink: #1b232d; --ink-soft: #515c6a; --ink-faint: #8894a2; --border: #d7dce2;
+    --bronze: #a56537; --bronze-bg: #f4e7dc; --bronze-edge: #d7b28d;
+    --silver: #566575; --silver-bg: #e7ebf0; --silver-edge: #b6c0cc;
+    --gold:   #94721a; --gold-bg: #f3ecd2; --gold-edge: #d8c37f;
+    --serve:  #2c7a72; --serve-bg: #d9ebe8; --serve-edge: #9fcfc8;
+  }
+  :root[data-theme="dark"] {
+    --bg: #12161c; --surface: #1b212a; --surface-2: #222a34;
+    --ink: #e7ecf2; --ink-soft: #a4b0be; --ink-faint: #6b7889; --border: #2c3641;
+    --bronze: #d09562; --bronze-bg: #2c2117; --bronze-edge: #573f26;
+    --silver: #9fb2c6; --silver-bg: #1e2630; --silver-edge: #384654;
+    --gold:   #d4b45c; --gold-bg: #282314; --gold-edge: #544a27;
+    --serve:  #4fb3a6; --serve-bg: #142d29; --serve-edge: #2b5751;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font-sans); line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1rem, 4vw, 2rem) 4rem; }
+
+  header.masthead { margin-bottom: 2.5rem; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--serve); font-weight: 600; margin: 0 0 .75rem;
+  }
+  h1 {
+    font-size: clamp(1.7rem, 4.2vw, 2.6rem); line-height: 1.1; margin: 0 0 .6rem;
+    letter-spacing: -.02em; text-wrap: balance; font-weight: 700;
+  }
+  .lede { color: var(--ink-soft); font-size: 1.05rem; max-width: 62ch; margin: 0; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: .5rem .9rem; margin-top: 1.4rem; }
+  .legend span {
+    font-family: var(--font-mono); font-size: .72rem; color: var(--ink-soft);
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .dot { width: .7rem; height: .7rem; border-radius: 2px; display: inline-block; }
+
+  .band {
+    display: grid; grid-template-columns: 210px 1fr; gap: 1.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1.4rem 1.5rem; position: relative;
+    border-left: 4px solid var(--tier, var(--border));
+  }
+  .band--bronze { --tier: var(--bronze); }
+  .band--silver { --tier: var(--silver); }
+  .band--gold   { --tier: var(--gold); }
+  .band--serve  { --tier: var(--serve); }
+
+  .band-head { align-self: start; }
+  .tier-tag {
+    font-family: var(--font-mono); font-size: .72rem; font-weight: 700;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--tier);
+    display: inline-block; margin: 0 0 .5rem;
+  }
+  .tier-role { font-weight: 650; font-size: 1rem; margin: 0 0 .5rem; letter-spacing: -.01em; }
+  .tier-note { font-size: .84rem; color: var(--ink-soft); margin: 0; }
+
+  .cards { display: flex; flex-wrap: wrap; gap: .8rem; align-content: start; }
+  .card {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: .8rem .9rem; flex: 1 1 210px; min-width: 190px;
+    border-top: 3px solid var(--tier, var(--border));
+  }
+  .card-name {
+    font-family: var(--font-mono); font-weight: 700; font-size: .92rem;
+    color: var(--ink); margin: 0 0 .35rem; word-break: break-word;
+  }
+  .badge {
+    font-family: var(--font-mono); font-size: .6rem; letter-spacing: .1em;
+    text-transform: uppercase; font-weight: 700; padding: .12rem .4rem;
+    border-radius: 4px; vertical-align: middle; margin-left: .35rem;
+    background: var(--tier-bg, var(--surface)); color: var(--tier, var(--ink-soft));
+    border: 1px solid var(--tier-edge, var(--border));
+  }
+  .band--bronze .badge { --tier-bg: var(--bronze-bg); --tier-edge: var(--bronze-edge); }
+  .band--silver .badge { --tier-bg: var(--silver-bg); --tier-edge: var(--silver-edge); }
+  .band--gold   .badge { --tier-bg: var(--gold-bg);   --tier-edge: var(--gold-edge); }
+  .band--serve  .badge { --tier-bg: var(--serve-bg);  --tier-edge: var(--serve-edge); }
+
+  .card-desc { font-size: .8rem; color: var(--ink-soft); margin: 0 0 .5rem; }
+  .cols {
+    font-family: var(--font-mono); font-size: .72rem; color: var(--ink-faint);
+    margin: 0; line-height: 1.55; word-break: break-word;
+  }
+  .cols b { color: var(--ink-soft); font-weight: 600; }
+  .src-note {
+    font-family: var(--font-mono); font-size: .68rem; color: var(--tier);
+    margin: .45rem 0 0; letter-spacing: .01em;
+  }
+
+  .flow {
+    display: flex; align-items: center; gap: .7rem; justify-content: center;
+    padding: .55rem 1rem; margin: 0 auto; max-width: 70ch;
+  }
+  .flow .arrow { color: var(--ink-faint); font-size: 1.1rem; line-height: 1; }
+  .flow p { margin: 0; font-size: .82rem; color: var(--ink-soft); text-align: center; }
+  .flow p b { color: var(--ink); font-weight: 650; }
+
+  .concepts { margin-top: 3rem; }
+  .concepts h2 {
+    font-size: 1.25rem; letter-spacing: -.01em; margin: 0 0 1.1rem;
+    padding-bottom: .6rem; border-bottom: 1px solid var(--border);
+  }
+  .concept-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+  .concept {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.1rem 1.2rem;
+  }
+  .concept h3 {
+    font-family: var(--font-mono); font-size: .9rem; margin: 0 0 .5rem;
+    color: var(--serve); font-weight: 700;
+  }
+  .concept p { margin: 0; font-size: .87rem; color: var(--ink-soft); }
+  .concept code {
+    font-family: var(--font-mono); font-size: .82em; background: var(--surface-2);
+    padding: .05rem .3rem; border-radius: 4px; color: var(--ink);
+  }
+
+  footer {
+    margin-top: 2.5rem; padding-top: 1.2rem; border-top: 1px solid var(--border);
+    font-size: .82rem; color: var(--ink-faint);
+  }
+  footer b { color: var(--ink-soft); }
+  footer code { font-family: var(--font-mono); }
+
+  a:focus-visible, .card:focus-visible { outline: 2px solid var(--serve); outline-offset: 2px; }
+
+  @media (max-width: 680px) {
+    .band { grid-template-columns: 1fr; gap: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">TimescaleDB · Greytec IDP</p>
+    <h1>Cómo fluye el dato en la base de datos</h1>
+    <p class="lede">El mismo dato sube por cuatro capas: aterriza crudo, se le da significado,
+      se convierte en indicadores y sale a los aplicativos. Esto es la <em>arquitectura
+      medallón</em> — cada capa refina la anterior. Entre plata y oro hay además un
+      <b>atajo de rendimiento</b> (02·b) que no cambia el significado del dato, solo evita
+      recalcularlo: es lo que separa 1347 ms de 3.9 ms.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--bronze)"></i> Bronce — crudo</span>
+      <span><i class="dot" style="background:var(--silver)"></i> Plata — interpretado</span>
+      <span><i class="dot" style="background:var(--gold)"></i> Oro — KPIs</span>
+      <span><i class="dot" style="background:var(--serve)"></i> Servicio — consumo</span>
+    </div>
+  </header>
+
+  <section class="band band--bronze">
+    <div class="band-head">
+      <p class="tier-tag">01 · Bronce</p>
+      <p class="tier-role">Aterrizaje crudo</p>
+      <p class="tier-note">El dato tal como llega del UNS, sin tocar. Una tabla por
+        categoría de mensaje del contrato.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <p class="card-name">sensor_readings<span class="badge">hypertable</span></p>
+        <p class="card-desc">Mediciones de proceso y salud.</p>
+        <p class="cols"><b>ts</b> · <b>src</b> · <b>seq</b> · payload <i>JSONB</i> · mqtt_topic</p>
+        <p class="src-note">← dat/raw + diag</p>
+      </div>
+      <div class="card">
+        <p class="card-name">device_status<span class="badge">hypertable</span></p>
+        <p class="card-desc">Estado booleano de dispositivos.</p>
+        <p class="cols"><b>ts</b> · <b>src</b> · state <i>JSONB</i></p>
+        <p class="src-note">← sts (retained)</p>
+      </div>
+      <div class="card">
+        <p class="card-name">alerts<span class="badge">hypertable</span></p>
+        <p class="card-desc">Alarmas y eventos discretos.</p>
+        <p class="cols"><b>ts</b> · <b>src</b> · evt_type · severity · value · threshold</p>
+        <p class="src-note">← dat/der + evt</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="flow">
+    <span class="arrow">↓</span>
+    <p>Las vistas de plata <b>desempaquetan el JSONB</b> a filas y lo cruzan con el diccionario de contexto.</p>
+  </div>
+
+  <section class="band band--silver">
+    <div class="band-head">
+      <p class="tier-tag">02 · Plata</p>
+      <p class="tier-role">Interpretación</p>
+      <p class="tier-note">Da significado al dato crudo. Aquí <code>tank_level_pct</code>
+        se vuelve «Nivel del tanque, %, límites 10–90».</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <p class="card-name">asset_tags<span class="badge">tabla · dicc.</span></p>
+        <p class="card-desc">El diccionario de contexto. No guarda datos, solo significado.</p>
+        <p class="cols">(<b>src</b>, <b>field</b>) → display_name · unit · area · min/max · is_numeric</p>
+      </div>
+      <div class="card">
+        <p class="card-name">v_process_readings<span class="badge">vista</span></p>
+        <p class="card-desc">Una fila por (ts, src, campo). El corazón de la capa.</p>
+        <p class="cols">sensor_readings ⋈ asset_tags · value · unit · límites</p>
+      </div>
+      <div class="card">
+        <p class="card-name">v_device_signals<span class="badge">vista</span></p>
+        <p class="card-desc">Cada señal booleana como fila (State Timeline).</p>
+        <p class="cols">device_status → signal · value</p>
+      </div>
+      <div class="card">
+        <p class="card-name">v_device_status_latest<span class="badge">vista</span></p>
+        <p class="card-desc">Último estado conocido por dispositivo.</p>
+        <p class="cols">DISTINCT ON (src)</p>
+      </div>
+      <div class="card">
+        <p class="card-name">v_alerts_recent<span class="badge">vista</span></p>
+        <p class="card-desc">Alarmas ordenadas por fecha.</p>
+        <p class="cols">alerts ORDER BY ts DESC</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="flow">
+    <span class="arrow">↓</span>
+    <p>Pero interpretar el JSONB en <b>cada consulta</b> es caro. Los KPIs que sabemos que
+      vamos a preguntar se <b>pre-agregan</b>.</p>
+  </div>
+
+  <section class="band band--silver">
+    <div class="band-head">
+      <p class="tier-tag">02·b · Pre-agregado</p>
+      <p class="tier-role">El atajo de rendimiento</p>
+      <p class="tier-note">Un <em>continuous aggregate</em>: TimescaleDB mantiene el
+        resultado ya calculado y solo procesa lo nuevo. Es la diferencia entre
+        <b>1347 ms y 3.9 ms</b>.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <p class="card-name">ca_kpi_1h<span class="badge">cont. aggregate</span></p>
+        <p class="card-desc">Cubetas de 1 h por dispositivo, ya sumadas. Lo leen las vistas
+          de oro en vez de abrir el JSONB de 700.000 filas cada vez.</p>
+        <p class="cols">GROUP BY (<b>hour</b>, <b>src</b>) · good/bad min-max · running_frac · kwh</p>
+        <p class="src-note">← sensor_readings (la hypertable, NO silver)</p>
+      </div>
+      <div class="card">
+        <p class="card-name">materialized_only = false<span class="badge">ajuste</span></p>
+        <p class="card-desc"><b>Agregación en tiempo real</b>: lo viejo se lee ya calculado
+          del disco, y la hora en curso se calcula al vuelo. Sin esto, el dato de ahora
+          mismo no aparecería hasta el siguiente refresco.</p>
+        <p class="cols">política: refresca cada 30 min · ventana 6 h → 1 h</p>
+      </div>
+      <div class="card">
+        <p class="card-name">las dos rutas<span class="badge">deliberado</span></p>
+        <p class="card-desc">Se pre-agrega lo <b>conocido</b> (los KPIs del catálogo). Lo
+          <b>desconocido</b> (explorar cualquier variable, Familia 1) sigue por el LATERAL
+          de plata. Misma lógica que indexar solo las consultas que sabes que vas a correr.</p>
+        <p class="cols">conocido → ca_kpi_1h · desconocido → v_process_readings</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="flow">
+    <span class="arrow">↓</span>
+    <p>Las vistas de oro <b>leen las cubetas ya sumadas</b> y calculan el indicador.</p>
+  </div>
+
+  <section class="band band--gold">
+    <div class="band-head">
+      <p class="tier-tag">03 · Oro</p>
+      <p class="tier-role">KPIs de negocio</p>
+      <p class="tier-note">Indicadores listos para consumir. La lógica vive aquí una sola
+        vez (regla anti-dilución).</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <p class="card-name">v_oee_hourly<span class="badge">vista</span></p>
+        <p class="card-desc">OEE = disponibilidad × calidad × performance. Lee
+          <code>ca_kpi_1h</code>, no las tablas crudas — de ahí los 3.9 ms.</p>
+        <p class="cols"><b>hour</b> · oee_pct · availability · quality · performance · <b>is_partial</b></p>
+        <p class="src-note">← ca_kpi_1h</p>
+      </div>
+      <div class="card">
+        <p class="card-name">v_production_hourly<span class="badge">vista</span></p>
+        <p class="card-desc">Botellas por hora (delta de contadores).</p>
+        <p class="cols"><b>hour</b> · produced · good · rejected · quality_pct</p>
+      </div>
+      <div class="card">
+        <p class="card-name">v_line_availability_hourly<span class="badge">vista</span></p>
+        <p class="card-desc">Fracción del tiempo en RUNNING.</p>
+        <p class="cols"><b>hour</b> · availability_pct · fault_pct</p>
+      </div>
+      <div class="card">
+        <p class="card-name">v_energy_hourly<span class="badge">vista</span></p>
+        <p class="card-desc">kWh + potencia media/máx.</p>
+        <p class="cols"><b>hour</b> · kwh · avg_power_w · max_power_w</p>
+      </div>
+      <div class="card">
+        <p class="card-name">v_energy_intensity_hourly<span class="badge">vista</span></p>
+        <p class="card-desc">Wh por botella — el argumento de eficiencia.</p>
+        <p class="cols"><b>hour</b> · wh_per_bottle</p>
+      </div>
+      <div class="card">
+        <p class="card-name">v_business_hourly<span class="badge">vista</span></p>
+        <p class="card-desc">El dinero: producción y energía × <code>business_params</code>.
+          El costo de paradas es margen <b>no ganado</b> (oportunidad) — se lista aparte,
+          nunca se resta.</p>
+        <p class="cols"><b>hour</b> · margen_usd · costo_energia_usd · costo_rechazos_usd
+          · costo_paradas_usd</p>
+        <p class="src-note">← v_production/energy/availability + business_params</p>
+      </div>
+      <div class="card" style="flex-basis:100%;">
+        <p class="card-name">business_params<span class="badge">tabla · catálogo</span></p>
+        <p class="card-desc">El <b>tercer catálogo</b>: qué VALE el negocio (asset_tags =
+          qué significa la señal; kpi_catalog = qué KPIs existen). Vive en la base porque
+          las fórmulas viven en SQL — y lo que está en una tabla se edita en caliente desde
+          la consola. En un cliente real, su ERP escribe estas filas por la API.</p>
+        <p class="cols"><b>param</b> → value · unit · description · <b>updated_at</b>
+          <i>(el pie de supuestos de cada cifra monetaria)</i></p>
+        <p class="src-note">tarifa_kwh · margen_botella · costo_rechazo · meta_diaria · tasa_nominal_bph</p>
+      </div>
+      <div class="card" style="flex-basis:100%;">
+        <p class="card-name">kpi_catalog<span class="badge">tabla · registro</span></p>
+        <p class="card-desc">El registro único de KPIs. No calcula: apunta. Lo leen la API
+          y el write-back — y el write-back lo <b>relee cada 30 s</b>, así que editarlo
+          desde la consola surte efecto sin desplegar nada.</p>
+        <p class="cols"><b>name</b> → view_name → topic · derived_from · time_column · unit
+          · <b>units</b> <i>jsonb</i> · publish · enabled</p>
+        <p class="src-note">units: sus CLAVES deciden qué campos salen al UNS</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="flow">
+    <span class="arrow">↓</span>
+    <p>La API y el write-back <b>leen el catálogo</b> y sirven cada KPI a su audiencia.</p>
+  </div>
+
+  <section class="band band--serve">
+    <div class="band-head">
+      <p class="tier-tag">04 · Servicio</p>
+      <p class="tier-role">Consumo</p>
+      <p class="tier-note">Cómo sale el dato hacia los aplicativos, cada canal a su
+        tipo de consumidor (contrato UNS §10).</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <p class="card-name">API FastAPI<span class="badge">servicio</span></p>
+        <p class="card-desc">Consumidor analítico → web, PowerBI, reportes. Detrás de
+          nginx, con OIDC: la <b>F4 exige rol admin</b> porque es la única que escribe.</p>
+        <p class="cols"><b>F1</b> uns/{tópico} → sensor_readings · <b>F2</b> kpi/{name} → gold
+          · <b>F3</b> reportes · <b>F4</b> admin → <i>escribe kpi_catalog, asset_tags y
+          business_params</i></p>
+      </div>
+      <div class="card">
+        <p class="card-name">kpi-writeback<span class="badge">servicio</span></p>
+        <p class="card-desc">Publica KPIs de vuelta al UNS para SCADA.</p>
+        <p class="cols">gold → <b>_kpi/*</b> en EMQX (retained)</p>
+      </div>
+      <div class="card">
+        <p class="card-name">Grafana<span class="badge">directo</span></p>
+        <p class="card-desc">Dashboards; lee silver/gold sin pasar por la API.</p>
+        <p class="cols">silver · gold → paneles</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="concepts">
+    <h2>Cinco ideas para leer esto sin ser experto en SQL</h2>
+    <div class="concept-grid">
+      <div class="concept">
+        <h3>hypertable</h3>
+        <p>Una tabla que TimescaleDB <b>trocea por tiempo</b> automáticamente. La consultas
+          como una tabla normal, pero por dentro está partida para que las búsquedas por
+          rango de fechas sean rápidas incluso con millones de filas.</p>
+      </div>
+      <div class="concept">
+        <h3>vista (view)</h3>
+        <p>Una consulta guardada con nombre. <b>No almacena datos</b>: se recalcula cada vez
+          que la lees. Por eso cambiar un KPI = cambiar su vista, sin migrar ni perder nada.</p>
+      </div>
+      <div class="concept">
+        <h3>continuous aggregate</h3>
+        <p>Una vista que <b>sí guarda</b> su resultado, y que TimescaleDB actualiza sola
+          procesando <b>solo lo nuevo</b>. Es a una vista lo que un índice es a una tabla:
+          pagas espacio para no repetir el mismo trabajo.</p>
+        <p>La diferencia con la <em>hypertable</em> confunde: las dos hacen cubetas de
+          tiempo. Pero la <b>hypertable trocea para GUARDAR</b> (partición física, invisible),
+          y el <b>agregado agrupa para SIGNIFICAR</b> («por hora»). De hecho un agregado
+          <em>se guarda dentro de</em> una hypertable.</p>
+      </div>
+      <div class="concept">
+        <h3>el JOIN con asset_tags</h3>
+        <p>El paso que convierte <code>tank_level_pct</code> en «Nivel del tanque, %, con
+          límites». Sin ese cruce, el dato crudo no tiene significado — es solo un número.</p>
+      </div>
+      <div class="concept">
+        <h3>el catálogo</h3>
+        <p>Una fila por KPI: <code>oee → v_oee_hourly → _kpi/oee</code>. Ni calcula ni guarda
+          series; solo <b>enlaza</b> nombre, vista y tópico para que API y write-back sepan qué servir.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Para ver las <b>tablas físicas</b> y sus columnas de forma interactiva: pgAdmin
+      (<code>:5050</code>) → click derecho en la base <b>greytec</b> → <b>ERD For Database</b>.
+      Ojo: el ERD muestra tablas, no vistas — este diagrama cubre el flujo completo que el
+      ERD no puede dibujar.</p>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,196 @@
+services:
+
+  # ─── NanoMQ — Broker MQTT local + bridge store-and-forward ─────────────────
+  # Rol: broker MQTT del edge (ADR-003) + puente QoS 1 hacia EMQX central
+  # (10.10.20.130:1883, VLAN DMZ) con clean_session=false. Headless.
+  #
+  # La config es una PLANTILLA (nanomq.conf.tpl): en el arranque se sustituyen
+  # los __PLACEHOLDER__ con las variables del .env vía sed y se ejecuta nanomq
+  # contra el archivo resultante en /tmp. Así NINGÚN secreto queda en el repo.
+  #
+  # Listener local :1883 anónimo (Node-RED y eKuiper publican sin auth en la
+  # red interna del compose). El bridge SÍ se autentica como `iot2050-bridge`.
+  nanomq:
+    image: emqx/nanomq:0.25.1
+    container_name: greytec-nanomq
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "1883:1883"   # MQTT — clientes locales y debug (MQTTX)
+      - "8083:8083"   # MQTT sobre WebSocket — debug desde navegador
+    volumes:
+      - ./nanomq/nanomq.conf.tpl:/etc/nanomq.conf.tpl:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        sed -e "s|__EMQX_CENTRAL_HOST__|$${EMQX_CENTRAL_HOST}|g" \
+            -e "s|__EMQX_CENTRAL_PORT__|$${EMQX_CENTRAL_PORT}|g" \
+            -e "s|__BRIDGE_USERNAME__|$${BRIDGE_USERNAME}|g" \
+            -e "s|__BRIDGE_PASSWORD__|$${BRIDGE_PASSWORD}|g" \
+            -e "s|__BRIDGE_CLIENT_ID__|$${BRIDGE_CLIENT_ID}|g" \
+            /etc/nanomq.conf.tpl | tr -d '\r' > /tmp/nanomq.conf
+        exec nanomq start --conf /tmp/nanomq.conf
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - greytec-edge
+
+  # ─── Node-RED — Adquisición Modbus TCP / OPC UA + UNS + Dashboard ──────────
+  # Rol (ADR-013): cliente Modbus TCP + OPC UA, normalización al contrato
+  # UNS v0.1 (docs/contracts/UNS.md), y Node-RED Dashboard como visualizador
+  # local del operador de campo. SIN base de datos.
+  #
+  # Imagen construida desde ./nodered/Dockerfile (añade modbus + opcua +
+  # dashboard). /data es un bind-mount a ./nodered para persistir flujos y
+  # credenciales junto al stack (fácil de respaldar por scp).
+  #
+  #   Editor:    http://10.10.10.100:1880
+  #   Dashboard: http://10.10.10.100:1880/ui   (en IOT2050: 10.10.10.4)
+  node-red:
+    build: ./nodered
+    container_name: greytec-node-red
+    restart: unless-stopped
+    user: "1000:1000"           # uid del usuario node-red; ver chown en README
+    ports:
+      - "1880:1880"
+    environment:
+      - TZ=America/Guayaquil
+      - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_CREDENTIAL_SECRET}
+    volumes:
+      - ./nodered:/data
+    depends_on:
+      - nanomq
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - greytec-edge
+
+  # ─── eKuiper — Stream processing en el edge ───────────────────────────────
+  # Rol (ADR-013): deadband, KPIs derivados y detección de anomalías. Lee de
+  # NanoMQ (tcp://nanomq:1883) y publica derivados de vuelta bajo dat/der.
+  #
+  # Queda montado e INACTIVO: arranca sin streams ni reglas. Cuando se necesite,
+  # los streams/reglas se crean vía la REST API (:9081). La fuente MQTT por
+  # defecto ya apunta a NanoMQ (MQTT_SOURCE__DEFAULT__SERVER).
+  ekuiper:
+    image: lfedge/ekuiper:latest
+    container_name: greytec-ekuiper
+    restart: unless-stopped
+    environment:
+      - TZ=America/Guayaquil
+      - MQTT_SOURCE__DEFAULT__SERVER=tcp://nanomq:1883
+      - KUIPER__BASIC__CONSOLELOG=true
+    ports:
+      - "9081:9081"   # REST API de gestión (crear streams/reglas)
+    volumes:
+      - ekuiper_data:/kuiper/data
+      - ekuiper_plugins:/kuiper/plugins
+    depends_on:
+      - nanomq
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - greytec-edge
+
+  # ─── eKuiper Manager — UI web de administración de eKuiper ─────────────────
+  # Consola para crear/editar streams y reglas sin curl. NO es el dashboard del
+  # operador (eso es Node-RED /ui); es herramienta de admin/desarrollo.
+  #
+  #   Web:   http://10.10.10.100:9082   (login por defecto: admin / public)
+  #   Tras entrar, "Add Service" -> endpoint http://ekuiper:9081
+  ekuiper-manager:
+    image: emqx/ekuiper-manager:latest
+    container_name: greytec-ekuiper-manager
+    restart: unless-stopped
+    environment:
+      - TZ=America/Guayaquil
+    ports:
+      - "9082:9082"
+    depends_on:
+      - ekuiper
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+    networks:
+      - greytec-edge
+
+  # ─── edge-health — Salud del edge -> UNS (categoría diag, UNS §7.5) ────────
+  # Publica métricas del host y contenedores con el mismo envelope dat que el
+  # envelope agrupado: {ts, src, seq, payload: {campo: {v, u, q}}}
+  # Topic: greytec/demo/campo/edge/iot2050/diag (QoS 1, retain=false)
+  # → NanoMQ → bridge → EMQX → Redpanda → TimescaleDB (src='iot2050')
+  # Requiere root para leer /var/run/docker.sock.
+  edge-health:
+    build: ./edge-health
+    container_name: greytec-edge-health
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      - TZ=America/Guayaquil
+      - MQTT_HOST=nanomq
+      - MQTT_PORT=1883
+      - MQTT_TOPIC=greytec/demo/campo/edge/iot2050/diag
+      - SRC=iot2050
+      - INTERVAL=10
+      - CTR_PREFIX=greytec-
+      - HOST_PROC=/host/proc
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - nanomq
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    networks:
+      - greytec-edge
+
+  # ─── def-publisher — plano definitional del UNS (contrato §4.0) ──────────────
+  # Publica un mensaje RETENIDO por dispositivo con su identidad y el diccionario
+  # de sus variables. Corre, publica y termina: no hay nada que mantener vivo.
+  # `restart: on-failure` lo reintenta si el broker aún no estaba listo, pero NO
+  # lo relanza tras una publicación correcta.
+  #
+  # Es lo que hace el namespace autodescriptivo: quien se suscribe a
+  # `+/+/+/+/+/def` recibe el modelo de datos completo de la celda al conectarse.
+  def-publisher:
+    build: ./def-publisher
+    container_name: greytec-def-publisher
+    restart: on-failure
+    environment:
+      - TZ=America/Guayaquil
+      - MQTT_HOST=nanomq
+      - MQTT_PORT=1883
+      - DEFINITIONS_PATH=/app/definitions.yml
+    volumes:
+      # Montado para poder editar el modelo de datos y republicar sin rebuild:
+      #   docker compose run --rm def-publisher
+      - ./def-publisher/definitions.yml:/app/definitions.yml:ro
+    depends_on:
+      - nanomq
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    networks:
+      - greytec-edge
+
+
+networks:
+  greytec-edge:
+    driver: bridge
+
+volumes:
+  ekuiper_data:
+  ekuiper_plugins:

@@ -1,0 +1,732 @@
+[
+    {
+        "id": "4cfb8fcb869efb1e",
+        "type": "tab",
+        "label": "Adquisición UNS",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "55776f09e3331221",
+        "type": "inject",
+        "z": "4cfb8fcb869efb1e",
+        "name": "inject 1s",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "1",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 120,
+        "wires": [
+            [
+                "9d357e5e4fac42d9"
+            ]
+        ]
+    },
+    {
+        "id": "e33f0ebab20c1acd",
+        "type": "inject",
+        "z": "4cfb8fcb869efb1e",
+        "name": "inject 1s",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "1",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 360,
+        "wires": [
+            [
+                "3b2561d72ef7fe59"
+            ]
+        ]
+    },
+    {
+        "id": "9d357e5e4fac42d9",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "preparar lectura PLC",
+        "func": "const ids = [\n    \"ns=2;s=Llenadora.State\",   \n    \"ns=2;s=Llenadora.StateText\",\n    \"ns=2;s=Llenadora.GoodCount\",\n    \"ns=2;s=Llenadora.BadCount\",\n    \"ns=2;s=Llenadora.SpeedBpm\",  \n    \"ns=2;s=Llenadora.TargetFlowKgh\",\n    \"ns=2;s=Llenadora.ValveCmdPct\",\n    \"ns=2;s=Llenadora.AlarmJam\",\n    \"ns=2;s=Llenadora.UptimeS\"\n];\nreturn [ids.map(id => ({ topic: id }))];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 120,
+        "wires": [
+            [
+                "f465862d11309ded"
+            ]
+        ]
+    },
+    {
+        "id": "f465862d11309ded",
+        "type": "OpcUa-Client",
+        "z": "4cfb8fcb869efb1e",
+        "endpoint": "e5530023accdec7d",
+        "action": "read",
+        "deadbandtype": "a",
+        "deadbandvalue": 1,
+        "time": 10,
+        "timeUnit": "s",
+        "certificate": "n",
+        "localfile": "",
+        "localkeyfile": "",
+        "securitymode": "None",
+        "securitypolicy": "None",
+        "useTransport": false,
+        "maxChunkCount": 1,
+        "maxMessageSize": 8192,
+        "receiveBufferSize": 8192,
+        "sendBufferSize": 8192,
+        "setstatusandtime": false,
+        "keepsessionalive": false,
+        "name": "",
+        "applicationName": "",
+        "applicationUri": "",
+        "x": 580,
+        "y": 120,
+        "wires": [
+            [
+                "419b540bd8bb5d9e"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "419b540bd8bb5d9e",
+        "type": "join",
+        "z": "4cfb8fcb869efb1e",
+        "name": "join",
+        "mode": "custom",
+        "build": "object",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "topic",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "useparts": false,
+        "accumulate": false,
+        "timeout": "",
+        "count": "9",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 750,
+        "y": 120,
+        "wires": [
+            [
+                "fd9377c9c01cd0cb",
+                "2ca01aa2222fe79f",
+                "bf79f979be776419"
+            ]
+        ]
+    },
+    {
+        "id": "fd9377c9c01cd0cb",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "PLC vars",
+        "func": "const d = msg.payload;\nconst g = id => d[`ns=2;s=Llenadora.${id}`];\nmsg.payload = {\n    line_state:      { v: g('State'),         u: '',     q: 'good' },\n    speed_bpm:       { v: g('SpeedBpm'),      u: 'bpm',  q: 'good' },\n    target_flow_kgh: { v: g('TargetFlowKgh'), u: 'kg/h', q: 'good' },\n    valve_cmd_pct:   { v: g('ValveCmdPct'),   u: '%',    q: 'good' },\n    good_count:      { v: g('GoodCount'),     u: 'cnt',  q: 'good' },\n    bad_count:       { v: g('BadCount'),      u: 'cnt',  q: 'good' }\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 120,
+        "wires": [
+            [
+                "732e01010edd23bf"
+            ]
+        ]
+    },
+    {
+        "id": "2ca01aa2222fe79f",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "PLC sts",
+        "func": "const d = msg.payload;\nconst g = id => d[`ns=2;s=Llenadora.${id}`];\nconst sts = {\n    src: 'plc-llenado-01', online: true, fw_ver: 'sim-0.1.0',\n    state_text: g('StateText'),\n    auto_mode:  true,                 // Cmd.AutoMode se integra con el flujo cmd\n    alarm_jam:  g('AlarmJam'),\n    uptime_s:   g('UptimeS')\n};\n// comparar sin uptime_s (cambia siempre) para decidir si publicar\nconst cmp = JSON.stringify([sts.online, sts.state_text, sts.alarm_jam]);\nif (cmp === context.get('cmp')) return null;\ncontext.set('cmp', cmp);\nreturn { topic: 'greytec/demo/produccion/llenado/plc-llenado-01/sts',\n         qos: 1, retain: true,\n         payload: { ts: new Date().toISOString(), ...sts } };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 160,
+        "wires": [
+            [
+                "0b97d0a8f027df4e"
+            ]
+        ]
+    },
+    {
+        "id": "bf79f979be776419",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "PLC evt",
+        "func": "const d = msg.payload;\nconst state = d['ns=2;s=Llenadora.State'];\nconst text  = d['ns=2;s=Llenadora.StateText'];\nconst prev  = context.get('state');\ncontext.set('state', state);\nif (prev === undefined || prev === state) return null;\n\nconst ts   = new Date().toISOString();\nconst base = 'greytec/demo/produccion/llenado/plc-llenado-01/evt';\nconst out  = [{ topic: base, qos: 1, retain: false,\n    payload: { ts, src: 'plc-llenado-01', evt_type: 'line_state_change',\n               severity: 'info', msg: `Linea: ${prev} -> ${state} (${text})` } }];\nif (state === 3) {\n    out.push({ topic: base, qos: 1, retain: false,\n        payload: { ts, src: 'plc-llenado-01', evt_type: 'jam_detected',\n                   severity: 'alarm', msg: 'Atasco en la llenadora' } });\n} else if (prev === 3) {\n    out.push({ topic: base, qos: 1, retain: false,\n        payload: { ts, src: 'plc-llenado-01', evt_type: 'jam_cleared',\n                   severity: 'info', msg: 'Atasco despejado' } });\n}\nreturn [out];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 200,
+        "wires": [
+            [
+                "0b97d0a8f027df4e"
+            ]
+        ]
+    },
+    {
+        "id": "732e01010edd23bf",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "RBE plc",
+        "func": "const SRC = 'plc-llenado-01';\nconst DEADBAND = { line_state: 0, speed_bpm: 0.5, target_flow_kgh: 5,\n                   valve_cmd_pct: 0.5, good_count: 0, bad_count: 0 }; \nconst HEARTBEAT_MS = 30000;\nconst BASE = `greytec/demo/produccion/llenado/${SRC}/dat/raw`;\n\nconst last = context.get('last') || {};\nlet   seq  = context.get('seq')  || 0;   // seq POR DISPOSITIVO (§3.4)\nconst now  = Date.now();\nconst out  = [];\n\nfor (const [name, val] of Object.entries(msg.payload)) {\n    const prev = last[name];\n    const db = DEADBAND[name] ?? 0;\n    const changed = prev === undefined\n        || (typeof val.v === 'number' ? Math.abs(val.v - prev.v) > db\n                                      : val.v !== prev.v)\n        || val.q !== prev.q;\n    if (changed || (now - prev.t) >= HEARTBEAT_MS) {\n        seq += 1;\n        last[name] = { v: val.v, q: val.q, t: now };\n        out.push({ topic: `${BASE}/${name}`, qos: 1, retain: true,\n                   payload: { ts: new Date().toISOString(), src: SRC, seq,\n                              v: val.v, u: val.u, q: val.q } });\n    }\n}\ncontext.set('last', last);\ncontext.set('seq', seq);\nreturn [out];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1080,
+        "y": 120,
+        "wires": [
+            [
+                "0b97d0a8f027df4e"
+            ]
+        ]
+    },
+    {
+        "id": "3b2561d72ef7fe59",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "preparar lectura Valvula",
+        "func": "const ids = [\n    \"ns=2;s=Valvula.SetpointPct\",\n    \"ns=2;s=Valvula.PositionPct\",\n    \"ns=2;s=Valvula.TravelTotalM\",\n    \"ns=2;s=Valvula.CycleCount\",\n    \"ns=2;s=Valvula.AirSupplyBar\",\n    \"ns=2;s=Valvula.AlarmDeviation\",\n    \"ns=2;s=Valvula.PlcLinkOk\"\n];\nreturn [ids.map(id => ({ topic: id }))];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 360,
+        "wires": [
+            [
+                "df69b423be2cc526"
+            ]
+        ]
+    },
+    {
+        "id": "df69b423be2cc526",
+        "type": "OpcUa-Client",
+        "z": "4cfb8fcb869efb1e",
+        "endpoint": "b150ddc70d454e7d",
+        "action": "read",
+        "deadbandtype": "a",
+        "deadbandvalue": 1,
+        "time": 10,
+        "timeUnit": "s",
+        "certificate": "n",
+        "localfile": "",
+        "localkeyfile": "",
+        "securitymode": "None",
+        "securitypolicy": "None",
+        "useTransport": false,
+        "maxChunkCount": 1,
+        "maxMessageSize": 8192,
+        "receiveBufferSize": 8192,
+        "sendBufferSize": 8192,
+        "setstatusandtime": false,
+        "keepsessionalive": false,
+        "name": "",
+        "applicationName": "",
+        "applicationUri": "",
+        "x": 580,
+        "y": 360,
+        "wires": [
+            [
+                "2718e6dc9d11190c"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "2718e6dc9d11190c",
+        "type": "join",
+        "z": "4cfb8fcb869efb1e",
+        "name": "join",
+        "mode": "custom",
+        "build": "object",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "topic",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "useparts": true,
+        "accumulate": false,
+        "timeout": "",
+        "count": "7",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 750,
+        "y": 360,
+        "wires": [
+            [
+                "d98986224fd3ee16",
+                "266ee924e98a76e4",
+                "c3a623f3246ea384"
+            ]
+        ]
+    },
+    {
+        "id": "d98986224fd3ee16",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "VALV vars",
+        "func": "const d = msg.payload;\nconst g = id => d[`ns=2;s=Valvula.${id}`];\nconst q = g('PlcLinkOk') ? 'good' : 'uncertain';\nmsg.payload = {\n    setpoint_pct:   { v: g('SetpointPct'),  u: '%',   q },\n    position_pct:   { v: g('PositionPct'),  u: '%',   q },\n    travel_total_m: { v: g('TravelTotalM'), u: 'm',   q },\n    cycle_count:    { v: g('CycleCount'),   u: 'cnt', q },\n    air_supply_bar: { v: g('AirSupplyBar'), u: 'bar', q }\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 930,
+        "y": 360,
+        "wires": [
+            [
+                "7da7d0c2d615cf5f"
+            ]
+        ]
+    },
+    {
+        "id": "266ee924e98a76e4",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "VALV sts",
+        "func": "const d = msg.payload;\nconst g = id => d[`ns=2;s=Valvula.${id}`];\nconst sts = {\n    src: 'valvula-01', online: true, fw_ver: 'sim-0.1.0',\n    plc_link_ok: g('PlcLinkOk'),\n    alarm_deviation: g('AlarmDeviation')\n};\nconst cmp = JSON.stringify([sts.online, sts.plc_link_ok, sts.alarm_deviation]);\nif (cmp === context.get('cmp')) return null;\ncontext.set('cmp', cmp);\nreturn {\n    topic: 'greytec/demo/produccion/llenado/valvula-01/sts',\n    qos: 1, retain: true,\n    payload: { ts: new Date().toISOString(), ...sts }\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 400,
+        "wires": [
+            [
+                "0b97d0a8f027df4e"
+            ]
+        ]
+    },
+    {
+        "id": "c3a623f3246ea384",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "VALV evt",
+        "func": "const d = msg.payload;\nconst alarm = d['ns=2;s=Valvula.AlarmDeviation'];\nconst prev  = context.get('alarm');\ncontext.set('alarm', alarm);\nif (prev === undefined || alarm === prev) return null;\n\nconst ts   = new Date().toISOString();\nconst base = 'greytec/demo/produccion/llenado/valvula-01/evt';\nif (alarm) {\n    return { topic: base, qos: 1, retain: false,\n             payload: { ts, src: 'valvula-01', evt_type: 'valve_deviation',\n                        severity: 'alarm',\n                        msg: 'Desviacion posicion vs setpoint > 5% sostenida > 10 s' } };\n}\nreturn { topic: base, qos: 1, retain: false,\n         payload: { ts, src: 'valvula-01', evt_type: 'valve_deviation_cleared',\n                    severity: 'info', msg: 'Desviacion de valvula despejada' } };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 920,
+        "y": 440,
+        "wires": [
+            [
+                "0b97d0a8f027df4e"
+            ]
+        ]
+    },
+    {
+        "id": "7da7d0c2d615cf5f",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "RBE VALV",
+        "func": "const SRC = 'valvula-01';\nconst DEADBAND = { setpoint_pct: 0.5, position_pct: 0.5, travel_total_m: 0.01,\n                   cycle_count: 0, air_supply_bar: 0.05 };\nconst HEARTBEAT_MS = 30000;\nconst BASE = `greytec/demo/produccion/llenado/${SRC}/dat/raw`;\n\nconst last = context.get('last') || {};\nlet   seq  = context.get('seq')  || 0;   // seq POR DISPOSITIVO (§3.4)\nconst now  = Date.now();\nconst out  = [];\n\nfor (const [name, val] of Object.entries(msg.payload)) {\n    const prev = last[name];\n    const db = DEADBAND[name] ?? 0;\n    const changed = prev === undefined\n        || (typeof val.v === 'number' ? Math.abs(val.v - prev.v) > db\n                                      : val.v !== prev.v)\n        || val.q !== prev.q;\n    if (changed || (now - prev.t) >= HEARTBEAT_MS) {\n        seq += 1;\n        last[name] = { v: val.v, q: val.q, t: now };\n        out.push({ topic: `${BASE}/${name}`, qos: 1, retain: true,\n                   payload: { ts: new Date().toISOString(), src: SRC, seq,\n                              v: val.v, u: val.u, q: val.q } });\n    }\n}\ncontext.set('last', last);\ncontext.set('seq', seq);\nreturn [out];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1090,
+        "y": 360,
+        "wires": [
+            [
+                "0b97d0a8f027df4e"
+            ]
+        ]
+    },
+    {
+        "id": "973e271b21c2eeea",
+        "type": "modbus-read",
+        "z": "4cfb8fcb869efb1e",
+        "name": "FC3 :5020",
+        "topic": "",
+        "showStatusActivities": false,
+        "logIOActivities": false,
+        "showErrors": false,
+        "showWarnings": true,
+        "unitid": "1",
+        "dataType": "HoldingRegister",
+        "adr": "0",
+        "quantity": "17",
+        "rate": "1",
+        "rateUnit": "s",
+        "delayOnStart": false,
+        "enableDeformedMessages": false,
+        "startDelayTime": "",
+        "server": "69f562aea2beb9aa",
+        "useIOFile": false,
+        "ioFile": "",
+        "useIOForPayload": false,
+        "emptyMsgOnFail": false,
+        "x": 680,
+        "y": 540,
+        "wires": [
+            [
+                "df59851c7168add2"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "b850ee9f8affd823",
+        "type": "modbus-read",
+        "z": "4cfb8fcb869efb1e",
+        "name": "FC3 :5021",
+        "topic": "",
+        "showStatusActivities": false,
+        "logIOActivities": false,
+        "showErrors": false,
+        "showWarnings": true,
+        "unitid": "1",
+        "dataType": "InputRegister",
+        "adr": "0",
+        "quantity": "13",
+        "rate": "2",
+        "rateUnit": "s",
+        "delayOnStart": false,
+        "enableDeformedMessages": false,
+        "startDelayTime": "",
+        "server": "32a4f5cbe8a32461",
+        "useIOFile": false,
+        "ioFile": "",
+        "useIOForPayload": false,
+        "emptyMsgOnFail": false,
+        "x": 680,
+        "y": 660,
+        "wires": [
+            [
+                "703b418ba776cc8c"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "df59851c7168add2",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "coriolis decode",
+        "func": "function f32(r, i) {\n    const b = Buffer.alloc(4);\n    b.writeUInt16BE(r[i], 0);\n    b.writeUInt16BE(r[i + 1], 2);\n    return parseFloat(b.readFloatBE(0).toFixed(3));\n}\nconst r  = msg.payload;\nconst st = r[16];\nconst plcOk = (st & 1) !== 0;\nconst air   = (st & 2) !== 0;\nconst qBase = plcOk ? 'good' : 'uncertain';\nconst qFlow = (plcOk && !air) ? 'good' : 'uncertain'; // dos fases → uncertain\n\nmsg.payload = {\n    mass_flow_kgh:   { v: f32(r, 0), u: 'kg/h',  q: qFlow },\n    volume_flow_lph: { v: f32(r, 2), u: 'L/h',   q: qBase },\n    density_kgm3:    { v: f32(r, 4), u: 'kg/m³', q: qFlow },\n    fluid_temp_c:    { v: f32(r, 6), u: '°C',    q: qBase },\n    total_mass_kg:   { v: f32(r, 8), u: 'kg',    q: qBase }\n};\nmsg.diag = {\n    drive_gain_pct:  f32(r, 10),\n    tube_freq_hz:    f32(r, 12),\n    sensor_temp_c:   f32(r, 14),\n    air_entrainment: air,\n    plc_link_ok:     plcOk\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 860,
+        "y": 540,
+        "wires": [
+            [
+                "b8dd3f4f9d422d1a",
+                "89d33a4c2533c91d"
+            ]
+        ]
+    },
+    {
+        "id": "b8dd3f4f9d422d1a",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "RBE coriolis-01",
+        "func": "const SRC = 'coriolis-01';\nconst DEADBAND = { mass_flow_kgh: 5, volume_flow_lph: 5, density_kgm3: 0.5,\n                   fluid_temp_c: 0.1, total_mass_kg: 1 };\nconst HEARTBEAT_MS = 30000;\nconst BASE = `greytec/demo/produccion/llenado/${SRC}/dat/raw`;\n\nconst last = context.get('last') || {};\nlet   seq  = context.get('seq')  || 0;   // seq POR DISPOSITIVO (§3.4)\nconst now  = Date.now();\nconst out  = [];\n\nfor (const [name, val] of Object.entries(msg.payload)) {\n    const prev = last[name];\n    const db = DEADBAND[name] ?? 0;\n    const changed = prev === undefined\n        || (typeof val.v === 'number' ? Math.abs(val.v - prev.v) > db\n                                      : val.v !== prev.v)\n        || val.q !== prev.q;\n    if (changed || (now - prev.t) >= HEARTBEAT_MS) {\n        seq += 1;\n        last[name] = { v: val.v, q: val.q, t: now };\n        out.push({ topic: `${BASE}/${name}`, qos: 1, retain: true,\n                   payload: { ts: new Date().toISOString(), src: SRC, seq,\n                              v: val.v, u: val.u, q: val.q } });\n    }\n}\ncontext.set('last', last);\ncontext.set('seq', seq);\nreturn [out];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1060,
+        "y": 540,
+        "wires": [
+            [
+                "0b97d0a8f027df4e"
+            ]
+        ]
+    },
+    {
+        "id": "89d33a4c2533c91d",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "coriolis diag RBE",
+        "func": "const d = msg.diag;\nconst DB = { drive_gain_pct: 1, tube_freq_hz: 0.05, sensor_temp_c: 0.2 };\nconst prev = context.get('last');\nconst now = Date.now();\nlet publish = !prev || (now - prev.t) >= 60000\n    || d.air_entrainment !== prev.d.air_entrainment\n    || d.plc_link_ok     !== prev.d.plc_link_ok;\nif (!publish) {\n    for (const [k, db] of Object.entries(DB)) {\n        if (Math.abs(d[k] - prev.d[k]) > db) { publish = true; break; }\n    }\n}\nif (!publish) return null;\ncontext.set('last', { d, t: now });\nreturn { topic: 'greytec/demo/produccion/llenado/coriolis-01/diag',\n         qos: 1, retain: false,\n         payload: { ts: new Date().toISOString(), src: 'coriolis-01',\n                    diag_type: 'transmitter_health', payload: d } };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1070,
+        "y": 580,
+        "wires": [
+            [
+                "0b97d0a8f027df4e"
+            ]
+        ]
+    },
+    {
+        "id": "703b418ba776cc8c",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "medidor decode",
+        "func": "function f32(r, i) {\n    const b = Buffer.alloc(4);\n    b.writeUInt16BE(r[i], 0);\n    b.writeUInt16BE(r[i + 1], 2);\n    return parseFloat(b.readFloatBE(0).toFixed(3));\n}\nconst r = msg.payload;\nconst q = (r[12] & 1) ? 'good' : 'uncertain'; // sin PLC = consumo sin contexto\n\nmsg.payload = {\n    voltage_v:      { v: f32(r, 0),  u: 'V',   q },\n    current_a:      { v: f32(r, 2),  u: 'A',   q },\n    active_power_w: { v: f32(r, 4),  u: 'W',   q },\n    power_factor:   { v: f32(r, 6),  u: '',    q },\n    frequency_hz:   { v: f32(r, 8),  u: 'Hz',  q },\n    energy_kwh:     { v: f32(r, 10), u: 'kWh', q }\n};\nmsg.plc_link_ok = (r[12] & 1) !== 0;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 860,
+        "y": 660,
+        "wires": [
+            [
+                "7a7c530895437a3b",
+                "dc69d064de6f2efa"
+            ]
+        ]
+    },
+    {
+        "id": "7a7c530895437a3b",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "RBE medidor-02",
+        "func": "const SRC = 'medidor-02';\nconst DEADBAND = {\n    voltage_v: 1, current_a: 0.05, active_power_w: 25,\n    power_factor: 0.01, frequency_hz: 0.02, energy_kwh: 0.01\n};\nconst HEARTBEAT_MS = 30000;\nconst BASE = `greytec/demo/produccion/llenado/${SRC}/dat/raw`;\n\nconst last = context.get('last') || {};\nlet seq = context.get('seq') || 0;   // seq POR DISPOSITIVO (§3.4)\nconst now = Date.now();\nconst out = [];\n\nfor (const [name, val] of Object.entries(msg.payload)) {\n    const prev = last[name];\n    const db = DEADBAND[name] ?? 0;\n    const changed = prev === undefined\n        || (typeof val.v === 'number' ? Math.abs(val.v - prev.v) > db\n            : val.v !== prev.v)\n        || val.q !== prev.q;\n    if (changed || (now - prev.t) >= HEARTBEAT_MS) {\n        seq += 1;\n        last[name] = { v: val.v, q: val.q, t: now };\n        out.push({\n            topic: `${BASE}/${name}`, qos: 1, retain: true,\n            payload: {\n                ts: new Date().toISOString(), src: SRC, seq,\n                v: val.v, u: val.u, q: val.q\n            }\n        });\n    }\n}\ncontext.set('last', last);\ncontext.set('seq', seq);\nreturn [out];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1060,
+        "y": 660,
+        "wires": [
+            [
+                "0b97d0a8f027df4e"
+            ]
+        ]
+    },
+    {
+        "id": "dc69d064de6f2efa",
+        "type": "function",
+        "z": "4cfb8fcb869efb1e",
+        "name": "medidor sts",
+        "func": "const sts = {\n    src: 'medidor-02', online: true, fw_ver: 'sim-0.1.0',\n    plc_link_ok: msg.plc_link_ok\n};\nconst cmp = JSON.stringify([sts.online, sts.plc_link_ok]);\nif (cmp === context.get('cmp')) return null;\ncontext.set('cmp', cmp);\nreturn { topic: 'greytec/demo/produccion/llenado/medidor-02/sts',\n         qos: 1, retain: true,\n         payload: { ts: new Date().toISOString(), ...sts } };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 700,
+        "wires": [
+            [
+                "0b97d0a8f027df4e"
+            ]
+        ]
+    },
+    {
+        "id": "0b97d0a8f027df4e",
+        "type": "mqtt out",
+        "z": "4cfb8fcb869efb1e",
+        "name": "",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "cfg-mqtt-nanomq",
+        "x": 1410,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "e5530023accdec7d",
+        "type": "OpcUa-Endpoint",
+        "name": "PLC llenado",
+        "endpoint": "opc.tcp://10.10.10.100:4840",
+        "secpol": "None",
+        "secmode": "None",
+        "none": true,
+        "login": false,
+        "usercert": false,
+        "usercertificate": "",
+        "userprivatekey": ""
+    },
+    {
+        "id": "b150ddc70d454e7d",
+        "type": "OpcUa-Endpoint",
+        "name": "Valvula",
+        "endpoint": "opc.tcp://10.10.10.100:4841",
+        "secpol": "None",
+        "secmode": "None",
+        "none": true,
+        "login": false,
+        "usercert": false,
+        "usercertificate": "",
+        "userprivatekey": ""
+    },
+    {
+        "id": "69f562aea2beb9aa",
+        "type": "modbus-client",
+        "name": "Coriolis",
+        "clienttype": "tcp",
+        "bufferCommands": true,
+        "stateLogEnabled": false,
+        "queueLogEnabled": false,
+        "failureLogEnabled": true,
+        "tcpHost": "10.10.10.100",
+        "tcpPort": "5020",
+        "tcpType": "DEFAULT",
+        "serialPort": "/dev/ttyUSB",
+        "serialType": "RTU-BUFFERD",
+        "serialBaudrate": 9600,
+        "serialDatabits": 8,
+        "serialStopbits": 1,
+        "serialParity": "none",
+        "serialConnectionDelay": 100,
+        "serialAsciiResponseStartDelimiter": "0x3A",
+        "unit_id": 1,
+        "commandDelay": 1,
+        "clientTimeout": 1000,
+        "reconnectOnTimeout": true,
+        "reconnectTimeout": 2000,
+        "parallelUnitIdsAllowed": true,
+        "showErrors": false,
+        "showWarnings": true,
+        "showLogs": true
+    },
+    {
+        "id": "32a4f5cbe8a32461",
+        "type": "modbus-client",
+        "name": "Medidor",
+        "clienttype": "tcp",
+        "bufferCommands": true,
+        "stateLogEnabled": false,
+        "queueLogEnabled": false,
+        "failureLogEnabled": true,
+        "tcpHost": "10.10.10.100",
+        "tcpPort": "5021",
+        "tcpType": "DEFAULT",
+        "serialPort": "/dev/ttyUSB",
+        "serialType": "RTU-BUFFERD",
+        "serialBaudrate": 9600,
+        "serialDatabits": 8,
+        "serialStopbits": 1,
+        "serialParity": "none",
+        "serialConnectionDelay": 100,
+        "serialAsciiResponseStartDelimiter": "0x3A",
+        "unit_id": 1,
+        "commandDelay": 1,
+        "clientTimeout": 1000,
+        "reconnectOnTimeout": true,
+        "reconnectTimeout": 2000,
+        "parallelUnitIdsAllowed": true,
+        "showErrors": false,
+        "showWarnings": true,
+        "showLogs": true
+    },
+    {
+        "id": "cfg-mqtt-nanomq",
+        "type": "mqtt-broker",
+        "name": "NanoMQ local",
+        "broker": "nanomq",
+        "port": "1883",
+        "clientid": "nodered-acq-modbus",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "38ec4795b705bdf5",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-opcua": "0.2.352",
+            "node-red-contrib-modbus": "5.45.2"
+        }
+    }
+]

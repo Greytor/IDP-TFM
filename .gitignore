@@ -1,0 +1,27 @@
+# Secretos — nunca se versionan
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Node
+node_modules/
+dist/
+
+# Datos y estado de contenedores
+**/data/
+**/appData/
+*.db
+
+# Node-RED: credenciales cifradas y estado
+deploy/2-edge/nodered/.config.*
+deploy/2-edge/nodered/*_cred.json
+deploy/2-edge/nodered/node_modules/
+
+# Sistema
+.DS_Store
+Thumbs.db

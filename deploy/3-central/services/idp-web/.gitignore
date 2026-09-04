@@ -1,0 +1,3 @@
+# Artefactos del build de TypeScript (tsc -b). node_modules/ y dist/ ya los
+# cubre el .gitignore de la raíz.
+*.tsbuildinfo

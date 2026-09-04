@@ -1,0 +1,434 @@
+/* Composición de la app — hereda los patrones del DMP (dmp.greytec.ec):
+   barra lateral oscura (logo + navegación + soporte abajo), área de contenido
+   clara con tarjetas blancas sobre Linen, Electric SOLO en la cifra crítica,
+   item activo del menú en Electric sobre Ink, semánticos para el estado. */
+
+/* ═══ Shell ═══ */
+.shell { display: flex; min-height: 100%; }
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 32px 64px;
+  max-width: 1280px;
+}
+
+/* ═══ Sidebar (Ink) ═══ */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--ink);
+  color: var(--parchment);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 18px 16px;
+  border-bottom: 1px solid var(--dark-hairline);
+}
+.sidebar-brand img { width: 30px; height: 30px; display: block; }
+.sidebar-brand .wm-name { font-size: 13px; color: var(--parchment); line-height: 1; }
+.sidebar-brand .wm-sub {
+  font-size: 7px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--steel-mid); margin-top: 3px;
+}
+
+.sidebar nav { flex: 1; padding: 14px 0; }
+
+.nav-section {
+  font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--steel-mid); padding: 14px 18px 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 18px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--steel);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+}
+.nav-item:hover { color: var(--parchment); }
+/* Item activo: Electric sobre Ink — el único Electric permitido en la nav. */
+.nav-item.active {
+  color: var(--electric);
+  border-left-color: var(--electric);
+  background: rgba(255, 255, 255, 0.03);
+}
+.nav-item .nav-ico { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.9; }
+
+.sidebar-foot {
+  border-top: 1px solid var(--dark-hairline);
+  padding: 14px 18px;
+  font-size: 12px;
+}
+/* El sitio (config por cliente): contexto discreto, ya no es el titular del
+   Resumen — en el demo "Greytec Demo" no informaba de nada (2026-07-17). */
+.sidebar-foot .site-label {
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--steel-mid); margin-bottom: 8px;
+}
+.sidebar-foot .who { color: var(--parchment); font-weight: 600; }
+.sidebar-foot .role {
+  display: inline-block; margin-left: 6px; padding: 1px 7px;
+  font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600;
+  background: var(--steel-tint); color: var(--steel-dk);
+}
+.sidebar-foot button {
+  margin-top: 10px; width: 100%;
+  background: transparent; color: var(--steel);
+  border: 1px solid rgba(168, 180, 188, 0.3);
+  padding: 6px 12px; font-size: 9px; letter-spacing: 1.5px;
+  text-transform: uppercase; font-weight: 500; cursor: pointer;
+}
+.sidebar-foot button:hover { color: var(--parchment); border-color: var(--steel); }
+
+/* ═══ Cabecera de vista ═══ */
+.view-head { margin-bottom: 22px; }
+.view-head .crumbs { margin-bottom: 4px; }
+.view-head .site {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+
+/* ═══ Tarjetas ═══ */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  padding: 18px 20px;
+}
+.card + .card { margin-top: 14px; }
+
+.card-title {
+  font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--slate); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 12px;
+}
+.card-title::after { content: ''; flex: 1; height: 1px; background: var(--mist); }
+
+/* Tarjeta de dato (kit §09): borde izquierdo + etiqueta + cifra grande. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+.stat {
+  padding: 14px 16px;
+  border: 1px solid var(--card-border);
+  border-left: 3px solid var(--ink);
+  background: var(--card-bg);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.stat .val { font-weight: 800; font-size: 28px; line-height: 1.05; color: var(--ink); }
+.stat .val small { font-size: 13px; font-weight: 500; color: var(--slate); margin-left: 4px; }
+.stat .sub { font-size: 11px; color: var(--slate); }
+.stat .sub.ok    { color: var(--online); }
+.stat .sub.warn  { color: var(--warning); }
+.stat .sub.fault { color: var(--fault); }
+
+/* ═══ Héroe: LA cifra crítica ═══
+   Único lugar de la vista donde vive Electric, y sobre Ink — regla del kit
+   aplicada con la disciplina del DMP (su score global). Las esquinas en
+   corchete son el motivo del mark. */
+.hero {
+  position: relative;
+  background: var(--ink);
+  color: var(--parchment);
+  padding: 26px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 28px;
+}
+.hero .corner {
+  position: absolute; width: 18px; height: 18px; pointer-events: none;
+}
+.hero .corner::before, .hero .corner::after {
+  content: ''; position: absolute; background: var(--parchment);
+}
+.hero .corner::before { width: 18px; height: 3px; }
+.hero .corner::after  { width: 3px;  height: 18px; }
+.hero .corner.tl { top: 6px; left: 6px; }
+.hero .corner.tr { top: 6px; right: 6px; transform: scaleX(-1); }
+.hero .corner.bl { bottom: 6px; left: 6px; transform: scaleY(-1); }
+.hero .corner.br { bottom: 6px; right: 6px; transform: scale(-1); }
+
+.hero .headline .label { color: var(--steel-mid); }
+.hero .headline .val {
+  font-weight: 800; font-size: 64px; line-height: 1;
+  color: var(--electric);           /* el dato crítico — y nada más */
+  letter-spacing: -1px;
+}
+.hero .headline .val small { font-size: 26px; letter-spacing: 0; }
+.hero .headline .when { font-size: 11px; color: var(--steel-mid); margin-top: 6px; }
+
+.hero .parts {
+  display: flex; gap: 24px; flex-wrap: wrap;
+  border-left: 1px solid var(--dark-hairline);
+  padding-left: 28px;
+}
+.hero .part .label { color: var(--steel-mid); }
+.hero .part .val { font-weight: 800; font-size: 24px; color: var(--parchment); }
+.hero .part .val small { font-size: 12px; font-weight: 500; color: var(--steel-mid); letter-spacing: 0.5px; }
+
+/* El acumulado del día, a la derecha del héroe. */
+.hero .parts.hoy { margin-left: auto; }
+.hero .sub-dark { font-size: 11px; color: var(--steel-mid); margin-top: 4px; }
+/* Buenas en claro, rechazadas en rojo suave: los semánticos del kit son para
+   fondo claro — sobre Ink necesitan sus versiones legibles. */
+.hero .hoy-detalle { font-size: 12px; color: var(--steel-mid); margin-top: 6px; }
+.hero .hoy-detalle .buenas { color: var(--parchment); font-weight: 600; }
+.hero .hoy-detalle .rechazadas { color: #fca5a5; font-weight: 600; }
+
+/* ═══ Badges de estado (kit §09) ═══ */
+.badge {
+  display: inline-block;
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600;
+  padding: 3px 9px; white-space: nowrap;
+}
+.badge.online  { background: #d1fae5; color: var(--online); }
+.badge.warning { background: #fef3c7; color: var(--warning); }
+.badge.fault   { background: #fee2e2; color: var(--fault); }
+.badge.steel   { background: var(--steel-tint); color: var(--steel-dk); }
+.badge.standby { background: var(--mist); color: var(--iron); }
+
+/* ═══ Botones (kit §09) ═══ */
+.btn {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600;
+  padding: 10px 18px; border: none; cursor: pointer; background: var(--ink);
+  color: var(--electric);
+}
+.btn:hover { background: var(--charcoal); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.outline { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+.btn.outline:hover { background: var(--mist); }
+.btn.ghost { background: transparent; color: var(--slate); border: 1px solid var(--rule); }
+.btn.ghost:hover { color: var(--iron); }
+.btn.danger { background: transparent; color: var(--fault); border: 1px solid var(--fault); }
+.btn.danger:hover { background: #fee2e2; }
+
+/* Selector segmentado (rangos 24h/3d/7d/30d, filtros de severidad) */
+.seg { display: inline-flex; border: 1px solid var(--rule); }
+.seg button {
+  background: var(--card-bg); border: none; cursor: pointer;
+  padding: 7px 14px; font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase; font-weight: 500; color: var(--iron);
+}
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button.on { background: var(--ink); color: var(--parchment); }
+
+/* ═══ Tablas ═══ */
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--card-bg); }
+.tbl th {
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase; font-weight: 600;
+  color: var(--slate); text-align: left;
+  padding: 10px 12px; border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.tbl td { padding: 9px 12px; border-bottom: 1px solid var(--parchment); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr.off td { color: var(--slate); }
+.tbl .actions { text-align: right; white-space: nowrap; }
+.tbl-wrap { overflow-x: auto; }
+
+/* ═══ Formularios ═══ */
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.field > span { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--iron); font-weight: 600; }
+.field input[type="text"], .field input[type="number"], .field textarea, .field select {
+  border: 1px solid var(--rule); background: #fff; padding: 8px 10px; font-size: 14px;
+}
+.field input:focus, .field textarea:focus, .field select:focus {
+  outline: 2px solid var(--steel); outline-offset: -1px;
+}
+.field .hint { font-size: 11px; color: var(--slate); letter-spacing: 0; text-transform: none; font-weight: 400; }
+.fecha-hora { display: flex; gap: 6px; }
+.fecha-hora input[type="date"], .fecha-hora select {
+  border: 1px solid var(--rule); background: #fff; padding: 8px 10px; font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+.form-grid .wide { grid-column: 1 / -1; }
+
+/* ═══ Diálogo de confirmación / edición ═══ */
+.overlay {
+  position: fixed; inset: 0; background: rgba(20, 20, 20, 0.55);
+  display: flex; align-items: center; justify-content: center; z-index: 40;
+  padding: 20px;
+}
+.dialog {
+  background: var(--linen); border: 1px solid var(--rule);
+  width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto;
+  padding: 22px 24px;
+}
+.dialog.narrow { max-width: 440px; }
+.dialog h2 { margin-bottom: 14px; }
+.dialog .dialog-actions {
+  display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;
+  border-top: 1px solid var(--rule); padding-top: 16px;
+}
+
+/* Aviso dentro de un diálogo (p. ej. retained_por_limpiar del DELETE) */
+.callout {
+  border-left: 3px solid var(--warning); background: var(--electric-tint);
+  padding: 10px 12px; font-size: 13px; margin: 12px 0;
+}
+.callout.error { border-left-color: var(--fault); background: #fee2e2; }
+.callout.info  { border-left-color: var(--steel); background: var(--steel-tint); }
+
+/* ═══ Económico: cifras + panel de supuestos ═══ */
+.econ-split { display: flex; gap: 16px; align-items: flex-start; }
+/* 2×2 compacto y SIN estirar: las fichas miden lo que su contenido, no la
+   altura del panel de al lado (las tarjetas salían como torres vacías). */
+.econ-split .stat-grid {
+  grid-template-columns: repeat(2, minmax(190px, 1fr));
+  align-content: start;
+}
+.econ-split .stat { height: fit-content; }
+.params-aside {
+  flex: 0 0 270px;
+  border-left: 1px solid var(--rule);
+  padding-left: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.param-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.param-row .p-name { color: var(--iron); }
+.param-row .p-val { font-weight: 600; white-space: nowrap; }
+.params-aside .p-foot {
+  margin-top: auto; padding-top: 8px; border-top: 1px solid var(--mist);
+  font-size: 10.5px; color: var(--slate); line-height: 1.5;
+}
+@media (max-width: 920px) {
+  .econ-split { flex-direction: column; }
+  .params-aside { flex: none; border-left: none; padding-left: 0;
+                  border-top: 1px solid var(--rule); padding-top: 10px; }
+}
+
+/* ═══ Meta diaria (medidor) ═══ */
+.meta-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.meter {
+  flex: 1; height: 10px; background: var(--mist); overflow: hidden;
+}
+.meter-fill { height: 100%; background: var(--steel-dk); }
+
+/* ═══ Estados vacíos / error / carga ═══ */
+.state {
+  border: 1px dashed var(--rule); background: var(--card-bg);
+  padding: 26px; text-align: center; color: var(--slate); font-size: 14px;
+}
+.state.error { border-color: var(--fault); color: var(--fault); border-style: solid; }
+.state .big { font-size: 16px; font-weight: 600; color: var(--iron); margin-bottom: 4px; }
+
+/* ═══ Marco de iframes (Grafana / PDF) ═══ */
+.frame {
+  background: var(--ink); border: 1px solid var(--ink); padding: 4px;
+}
+.frame iframe { width: 100%; border: 0; display: block; background: var(--dark-card-bg); }
+/* Dashboards: el iframe ES la vista — todo el espacio a la derecha de la
+   sidebar, sin marco ni padding del main (fixed, no forma parte del flujo). */
+.dash-fill {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  left: var(--sidebar-w);
+  background: var(--linen);
+}
+.dash-fill iframe { width: 100%; height: 100%; border: 0; display: block; }
+@media (max-width: 920px) {
+  .dash-fill { left: 0; top: 48px; } /* deja ver la topbar; el cajón la tapa al abrir */
+}
+
+/* ═══ Árbol del namespace ═══ */
+.tree { font-size: 13.5px; }
+.tree details { margin-left: 0; }
+.tree details details { margin-left: 18px; }
+.tree summary {
+  cursor: pointer; padding: 5px 6px; list-style: none;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid var(--parchment);
+}
+.tree summary::before { content: '▸'; font-size: 10px; color: var(--slate); transition: transform 0.12s; }
+.tree details[open] > summary::before { transform: rotate(90deg); }
+.tree summary:hover { background: var(--mist); }
+.tree .leaf {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px 5px 24px; margin-left: 18px; cursor: pointer;
+  border-bottom: 1px solid var(--parchment); width: calc(100% - 18px);
+  background: none; border-left: none; border-right: none; border-top: none;
+  text-align: left;
+}
+.tree .leaf:hover { background: var(--mist); }
+.tree .leaf.sel { background: var(--steel-tint); }
+.tree .leaf .meta { margin-left: auto; font-size: 11px; color: var(--slate); }
+.tree .cat {
+  font-size: 8px; letter-spacing: 1px; text-transform: uppercase; font-weight: 600;
+  padding: 1px 6px; background: var(--steel-tint); color: var(--steel-dk);
+}
+
+/* ═══ Layout de dos columnas (árbol + detalle, tabla + editor) ═══ */
+.split { display: grid; grid-template-columns: minmax(320px, 1.2fr) 1fr; gap: 14px; align-items: start; }
+
+/* ═══ Toolbar de vista ═══ */
+.toolbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.toolbar .spacer { flex: 1; }
+
+/* ═══ Pantallas completas (arranque, login, error fatal) ═══ */
+.splash {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 18px;
+  background: var(--ink); color: var(--parchment); text-align: center; padding: 24px;
+}
+.splash img { width: 220px; max-width: 70vw; }
+.splash .msg { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--steel-mid); }
+.splash .detail { font-size: 13px; color: var(--steel); max-width: 480px; }
+
+/* ═══ Móvil: el gerente lo abre en el teléfono ═══ */
+.menu-btn { display: none; }
+@media (max-width: 920px) {
+  .shell { flex-direction: column; }
+  .sidebar {
+    position: fixed; inset: 0 auto 0 0; z-index: 50;
+    transform: translateX(-100%); transition: transform 0.18s ease-out;
+    width: min(280px, 84vw); height: 100dvh;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .scrim {
+    position: fixed; inset: 0; background: rgba(20, 20, 20, 0.45); z-index: 45;
+  }
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--ink); color: var(--parchment);
+    padding: 12px 16px; position: sticky; top: 0; z-index: 30;
+  }
+  .topbar img { width: 24px; height: 24px; }
+  .topbar .wm-name { font-size: 12px; }
+  .menu-btn {
+    display: block; background: none; border: 1px solid rgba(168, 180, 188, 0.3);
+    color: var(--steel); padding: 5px 10px; cursor: pointer; margin-left: auto;
+    font-size: 16px; line-height: 1;
+  }
+  .main { padding: 18px 14px 48px; }
+  .hero { gap: 18px; padding: 20px; }
+  .hero .headline .val { font-size: 46px; }
+  .hero .parts { border-left: none; padding-left: 0; }
+  .split { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+}
+@media (min-width: 921px) {
+  .topbar { display: none; }
+  .scrim { display: none; }
+}

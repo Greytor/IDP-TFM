@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Favicon del Brand Kit §01 (spec de 20px): el mark sobre su PROPIO fondo Ink.
+       Lleva el fondo dentro a propósito — así se ve igual en pestañas claras y
+       oscuras, sin depender de prefers-color-scheme (journal 2.1 §6, pendiente). -->
+  <rect x="0" y="0" width="80" height="80" fill="#141414"/>
+  <rect x="7" y="62" width="6" height="18" fill="#f0efed"/><rect x="17" y="46" width="6" height="34" fill="#f0efed"/>
+  <rect x="27" y="28" width="6" height="52" fill="#f0efed"/><rect x="37" y="16" width="6" height="64" fill="#f0efed"/>
+  <rect x="47" y="32" width="6" height="48" fill="#b0b0b0"/><rect x="57" y="50" width="6" height="30" fill="#666"/>
+  <rect x="67" y="62" width="6" height="18" fill="#333"/>
+</svg>

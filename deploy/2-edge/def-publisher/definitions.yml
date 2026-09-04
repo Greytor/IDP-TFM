@@ -1,0 +1,316 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEFINICIONES DE ACTIVO — plano definitional del UNS (contrato §4.0)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Este fichero es la fuente única del modelo de datos de la celda. `def-publisher`
+# lo lee al arrancar y publica un mensaje RETENIDO por dispositivo en
+#   greytec/demo/produccion/llenado/{cell}/def
+#
+# Regla 0 del contrato (§11): toda variable publicada en dat/raw o diag debe estar
+# declarada aquí, y toda variable declarada aquí debe publicarse. El script
+# `validar_contrato.py` comprueba ambas direcciones contra el broker.
+#
+# Al cambiar algo aquí, INCREMENTAR `rev` del dispositivo afectado.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+contract: "0.4"
+base_topic: greytec/demo/produccion/llenado
+
+devices:
+
+  # ───────────────────────────────────────────────────────────────────────────
+  plc-llenado-01:
+    rev: 1
+    asset:
+      display_name: PLC de celda de llenado
+      type: controlador
+      manufacturer: Greytec (simulado)
+      model: sim-plc-llenado
+      serial: SIM-PLC-01
+      area: Llenado
+      parent: null
+      protocol: opc-ua
+      endpoint: "opc.tcp://10.10.10.100:4840"
+    variables:
+      line_state:
+        display_name: Estado de la línea
+        u: ""
+        type: int
+        channel: dat/raw
+        deadband: 0          # 0 = cualquier cambio
+        enum: {0: STOPPED, 1: STARTING, 2: RUNNING, 3: FAULT}
+        source: {protocol: opc-ua, node: "ns=2;s=Llenadora.State"}
+      speed_bpm:
+        display_name: Velocidad de línea
+        u: bpm
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 120
+        deadband: 0.5
+        source: {protocol: opc-ua, node: "ns=2;s=Llenadora.SpeedBpm"}
+      target_flow_kgh:
+        display_name: Consigna de caudal
+        u: kg/h
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 2000
+        deadband: 5
+        source: {protocol: opc-ua, node: "ns=2;s=Llenadora.TargetFlowKgh"}
+      valve_cmd_pct:
+        display_name: Mando a la válvula
+        u: "%"
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 100
+        deadband: 0.5
+        source: {protocol: opc-ua, node: "ns=2;s=Llenadora.ValveCmdPct"}
+      good_count:
+        display_name: Botellas buenas
+        u: cnt
+        type: int
+        channel: dat/raw
+        min_limit: 0
+        deadband: 0
+        accumulator: true
+        source: {protocol: opc-ua, node: "ns=2;s=Llenadora.GoodCount"}
+      bad_count:
+        display_name: Botellas rechazadas
+        u: cnt
+        type: int
+        channel: dat/raw
+        min_limit: 0
+        deadband: 0
+        accumulator: true
+        source: {protocol: opc-ua, node: "ns=2;s=Llenadora.BadCount"}
+
+  # ───────────────────────────────────────────────────────────────────────────
+  coriolis-01:
+    rev: 1
+    asset:
+      display_name: Caudalímetro Coriolis
+      type: instrumento
+      manufacturer: Greytec (simulado)
+      model: sim-coriolis
+      serial: SIM-CORIOLIS-01
+      area: Llenado
+      parent: plc-llenado-01
+      protocol: modbus-tcp
+      endpoint: "10.10.10.100:5020"
+    variables:
+      mass_flow_kgh:
+        display_name: Caudal másico
+        u: kg/h
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 2000
+        deadband: 5
+        source: {protocol: modbus-tcp, fc: 3, addr: "0-1", encoding: float32-be}
+      volume_flow_lph:
+        display_name: Caudal volumétrico
+        u: L/h
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 2000
+        deadband: 5
+        source: {protocol: modbus-tcp, fc: 3, addr: "2-3", encoding: float32-be}
+      density_kgm3:
+        display_name: Densidad
+        u: kg/m³
+        type: number
+        channel: dat/raw
+        min_limit: 800
+        max_limit: 1200
+        deadband: 0.5
+        source: {protocol: modbus-tcp, fc: 3, addr: "4-5", encoding: float32-be}
+      fluid_temp_c:
+        display_name: Temperatura del fluido
+        u: °C
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 80
+        deadband: 0.1
+        source: {protocol: modbus-tcp, fc: 3, addr: "6-7", encoding: float32-be}
+      total_mass_kg:
+        display_name: Masa totalizada
+        u: kg
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        deadband: 1
+        accumulator: true
+        source: {protocol: modbus-tcp, fc: 3, addr: "8-9", encoding: float32-be}
+      # ─── canal de diagnóstico (patrón NOA, contrato §4.5) ───
+      drive_gain_pct:
+        display_name: Ganancia de excitación
+        u: "%"
+        type: number
+        channel: diag
+        min_limit: 0
+        max_limit: 100
+        deadband: 1
+        nota: >-
+          Normal ≈8 %. Sube a 40-90 % con aire arrastrado en el tubo de medida.
+          Es el indicador NOA de mantenimiento predictivo de la celda.
+        source: {protocol: modbus-tcp, fc: 3, addr: "10-11", encoding: float32-be}
+      tube_freq_hz:
+        display_name: Frecuencia del tubo
+        u: Hz
+        type: number
+        channel: diag
+        deadband: 0.05
+        source: {protocol: modbus-tcp, fc: 3, addr: "12-13", encoding: float32-be}
+      sensor_temp_c:
+        display_name: Temperatura del sensor
+        u: °C
+        type: number
+        channel: diag
+        deadband: 0.2
+        source: {protocol: modbus-tcp, fc: 3, addr: "14-15", encoding: float32-be}
+      air_entrainment:
+        display_name: Aire arrastrado detectado
+        u: ""
+        type: bool
+        channel: diag
+        deadband: 0          # booleana: cualquier cambio publica el objeto entero
+        source: {protocol: modbus-tcp, fc: 3, addr: "16", encoding: status_word-bit1}
+      plc_link_ok:
+        display_name: Enlace con el PLC
+        u: ""
+        type: bool
+        channel: diag
+        deadband: 0
+        source: {protocol: modbus-tcp, fc: 3, addr: "16", encoding: status_word-bit0}
+
+  # ───────────────────────────────────────────────────────────────────────────
+  valvula-01:
+    rev: 1
+    asset:
+      display_name: Válvula de control con posicionador
+      type: actuador
+      manufacturer: Greytec (simulado)
+      model: sim-valvula
+      serial: SIM-VALVULA-01
+      area: Llenado
+      parent: plc-llenado-01
+      protocol: opc-ua
+      endpoint: "opc.tcp://10.10.10.100:4841"
+    variables:
+      setpoint_pct:
+        display_name: Consigna de posición
+        u: "%"
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 100
+        deadband: 0.5
+        source: {protocol: opc-ua, node: "ns=2;s=Valvula.SetpointPct"}
+      position_pct:
+        display_name: Posición real
+        u: "%"
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 100
+        deadband: 0.5
+        source: {protocol: opc-ua, node: "ns=2;s=Valvula.PositionPct"}
+      travel_total_m:
+        display_name: Recorrido acumulado del vástago
+        u: m
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        deadband: 0.01
+        accumulator: true
+        nota: Indicador de desgaste del posicionador.
+        source: {protocol: opc-ua, node: "ns=2;s=Valvula.TravelTotalM"}
+      cycle_count:
+        display_name: Inversiones de dirección
+        u: cnt
+        type: int
+        channel: dat/raw
+        min_limit: 0
+        deadband: 0
+        accumulator: true
+        source: {protocol: opc-ua, node: "ns=2;s=Valvula.CycleCount"}
+      air_supply_bar:
+        display_name: Presión de aire de instrumentos
+        u: bar
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 10
+        deadband: 0.05
+        source: {protocol: opc-ua, node: "ns=2;s=Valvula.AirSupplyBar"}
+
+  # ───────────────────────────────────────────────────────────────────────────
+  medidor-02:
+    rev: 1
+    asset:
+      display_name: Medidor de energía de la celda
+      type: instrumento
+      manufacturer: Greytec (simulado)
+      model: sim-medidor
+      serial: SIM-MEDIDOR-02
+      area: Energía
+      parent: plc-llenado-01
+      protocol: modbus-tcp
+      endpoint: "10.10.10.100:5021"
+    variables:
+      voltage_v:
+        display_name: Tensión
+        u: V
+        type: number
+        channel: dat/raw
+        min_limit: 200
+        max_limit: 250
+        deadband: 1
+        source: {protocol: modbus-tcp, fc: 4, addr: "0-1", encoding: float32-be}
+      current_a:
+        display_name: Corriente
+        u: A
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 100
+        deadband: 0.05
+        source: {protocol: modbus-tcp, fc: 4, addr: "2-3", encoding: float32-be}
+      active_power_w:
+        display_name: Potencia activa
+        u: W
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        deadband: 25
+        source: {protocol: modbus-tcp, fc: 4, addr: "4-5", encoding: float32-be}
+      power_factor:
+        display_name: Factor de potencia
+        u: ""
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        max_limit: 1
+        deadband: 0.01
+        source: {protocol: modbus-tcp, fc: 4, addr: "6-7", encoding: float32-be}
+      frequency_hz:
+        display_name: Frecuencia
+        u: Hz
+        type: number
+        channel: dat/raw
+        min_limit: 55
+        max_limit: 65
+        deadband: 0.02
+        source: {protocol: modbus-tcp, fc: 4, addr: "8-9", encoding: float32-be}
+      energy_kwh:
+        display_name: Energía acumulada
+        u: kWh
+        type: number
+        channel: dat/raw
+        min_limit: 0
+        deadband: 0.01
+        accumulator: true
+        source: {protocol: modbus-tcp, fc: 4, addr: "10-11", encoding: float32-be}
