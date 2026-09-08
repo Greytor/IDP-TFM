@@ -35,8 +35,9 @@ INSERT_READING = """
 # condicionado por `rev` hace que reprocesarlo sea gratis, y evita que una revisión
 # vieja reentregada tras un corte pise a una nueva ya aplicada.
 UPSERT_ASSET = """
-    INSERT INTO assets (src, rev, display_name, asset_type, area, parent, protocol, body, ingested_at)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+    INSERT INTO assets (src, rev, display_name, asset_type, area, parent, protocol, body,
+                        mqtt_topic, ingested_at)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
     ON CONFLICT (src) DO UPDATE SET
         rev          = EXCLUDED.rev,
         display_name = EXCLUDED.display_name,
@@ -45,6 +46,7 @@ UPSERT_ASSET = """
         parent       = EXCLUDED.parent,
         protocol     = EXCLUDED.protocol,
         body         = EXCLUDED.body,
+        mqtt_topic   = EXCLUDED.mqtt_topic,
         ingested_at  = NOW()
     WHERE assets.rev < EXCLUDED.rev
 """
@@ -150,6 +152,7 @@ def upsert_definition(conn, body, mqtt_topic):
             src, rev,
             act.get("display_name", src), act.get("type"), act.get("area", ""),
             act.get("parent"), act.get("protocol"), json.dumps(act),
+            mqtt_topic,
         ))
         aplicado = cur.rowcount > 0
 

@@ -12,14 +12,14 @@
 # Al cambiar algo aquí, INCREMENTAR `rev` del dispositivo afectado.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-contract: "0.4"
+contract: "0.5"
 base_topic: greytec/demo/produccion/llenado
 
 devices:
 
   # ───────────────────────────────────────────────────────────────────────────
   plc-llenado-01:
-    rev: 1
+    rev: 2
     asset:
       display_name: PLC de celda de llenado
       type: controlador
@@ -87,7 +87,7 @@ devices:
 
   # ───────────────────────────────────────────────────────────────────────────
   coriolis-01:
-    rev: 1
+    rev: 2
     asset:
       display_name: Caudalímetro Coriolis
       type: instrumento
@@ -188,7 +188,7 @@ devices:
 
   # ───────────────────────────────────────────────────────────────────────────
   valvula-01:
-    rev: 1
+    rev: 2
     asset:
       display_name: Válvula de control con posicionador
       type: actuador
@@ -249,7 +249,7 @@ devices:
 
   # ───────────────────────────────────────────────────────────────────────────
   medidor-02:
-    rev: 1
+    rev: 2
     asset:
       display_name: Medidor de energía de la celda
       type: instrumento

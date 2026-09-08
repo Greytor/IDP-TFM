@@ -23,7 +23,7 @@ export function Apis() {
     <>
       <div className="view-head">
         <div className="label crumbs">
-          Dos servicios, un explorador · el contrato de verdad es docs/contracts/API.md
+          La superficie HTTP del IDP · el contrato de datos es docs/contracts/UNS.md
         </div>
         <h1>Explorador de APIs</h1>
       </div>

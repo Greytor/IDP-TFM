@@ -10,7 +10,7 @@
 import { useMemo, useState } from 'react';
 
 import { useUnsLatest, useUnsTopics } from '../../api/hooks';
-import type { UnsTopic } from '../../api/types';
+import type { KpiRow, UnsAsset, UnsTopic } from '../../api/types';
 import { Empty, ErrorState, Loading } from '../../components/ui';
 import { ago, fmtDateTime, fmt } from '../../lib/format';
 
@@ -141,21 +141,32 @@ function TopicDetail({ topic }: { topic: UnsTopic | null }) {
     );
   }
 
+  const esDef = topic.categoria === 'def';
+
   return (
     <div className="card">
-      <div className="card-title">Último valor</div>
+      <div className="card-title">{esDef ? 'Definición del activo' : 'Último valor'}</div>
       <p className="mono" style={{ fontSize: 12, wordBreak: 'break-all', marginBottom: 10 }}>
         {topic.topic}
       </p>
       <p className="label num" style={{ marginBottom: 12 }}>
-        {fmt(topic.mensajes, 0)} mensajes en el historiador · último {ago(topic.ultimo)}
+        {esDef
+          ? `revisión ${topic.mensajes} · materializada ${ago(topic.ultimo)}`
+          : `${fmt(topic.mensajes, 0)} mensajes en el historiador · último ${ago(topic.ultimo)}`}
       </p>
       {latest.isPending && <Loading />}
       {latest.isError && <ErrorState error={latest.error} />}
       {latest.isSuccess && latest.data.data.length === 0 && (
         <Empty>Este tópico no tiene lecturas con etiqueta registrada (asset_tags).</Empty>
       )}
-      {latest.isSuccess && latest.data.data.length > 0 && (
+      {latest.isSuccess && esDef && (
+        <Definicion
+          asset={(latest.data.meta.asset as UnsAsset) ?? {}}
+          rev={latest.data.meta.rev as number | undefined}
+          variables={latest.data.data}
+        />
+      )}
+      {latest.isSuccess && !esDef && latest.data.data.length > 0 && (
         <div className="tbl-wrap">
           <table className="tbl">
             <thead>
@@ -193,5 +204,101 @@ function TopicDetail({ topic }: { topic: UnsTopic | null }) {
         </div>
       )}
     </div>
+  );
+}
+
+/* El `def` renderizado: identidad del activo y su diccionario de variables (§4.0).
+   Es la única categoría con vista propia, y con motivo: las otras cinco transportan
+   un valor medido, esta transporta el modelo de datos del activo. Meter ambas cosas
+   en una tabla de "señal / valor" obligaba a concatenar cuatro campos en una cadena
+   y perdía la identidad entera (fabricante, serie, protocolo, jerarquía). */
+function Definicion({
+  asset,
+  rev,
+  variables,
+}: {
+  asset: UnsAsset;
+  rev?: number;
+  variables: KpiRow[];
+}) {
+  const identidad: Array<[string, string]> = [];
+  const add = (k: string, v?: string) => {
+    if (v) identidad.push([k, v]);
+  };
+  add('Tipo', asset.type);
+  add('Área', asset.area);
+  add('Depende de', asset.parent);
+  add('Fabricante', [asset.manufacturer, asset.model].filter(Boolean).join(' · '));
+  add('Nº de serie', asset.serial);
+  add('Protocolo', asset.protocol);
+  add('Dirección', asset.endpoint);
+
+  const limites = (r: KpiRow): string => {
+    const lo = r.min_limit as number | null;
+    const hi = r.max_limit as number | null;
+    if (lo == null && hi == null) return '—';
+    return `${lo ?? '−∞'} … ${hi ?? '+∞'}`;
+  };
+
+  return (
+    <>
+      {asset.display_name ? (
+        <p style={{ fontWeight: 600, marginBottom: 8 }}>
+          {asset.display_name}
+          {rev != null ? (
+            <span className="label" style={{ marginLeft: 8 }}>
+              rev {rev}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+
+      {identidad.length > 0 ? (
+        <div className="tbl-wrap" style={{ marginBottom: 16 }}>
+          <table className="tbl">
+            <tbody>
+              {identidad.map(([k, v]) => (
+                <tr key={k}>
+                  <td className="label" style={{ width: '35%' }}>
+                    {k}
+                  </td>
+                  <td className="mono">{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      <div className="tbl-wrap">
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Unidad</th>
+              <th>Canal</th>
+              <th>Umbral</th>
+              <th>Límites</th>
+            </tr>
+          </thead>
+          <tbody>
+            {variables.map((r, i) => (
+              <tr key={i}>
+                <td>
+                  {(r.display_name as string) || (r.field as string)}
+                  <span className="label" style={{ display: 'block', letterSpacing: 1 }}>
+                    {r.field as string}
+                  </span>
+                </td>
+                <td>{(r.unit as string) || '—'}</td>
+                <td className="mono">{(r.channel as string) || '—'}</td>
+                <td className="num">{r.deadband == null ? '—' : fmt(r.deadband as number)}</td>
+                <td className="num">{limites(r)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

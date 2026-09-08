@@ -8,9 +8,15 @@ sabe exactamente qué consultar aquí, sin aprender un esquema nuevo.
 
 Enruta por la CATEGORÍA del tópico, igual que el consumer redpanda-to-tsdb pero
 al revés (lee en lugar de escribir):
-    dat/raw + diag  → v_process_readings   (mediciones desempaquetadas)
+    def             → assets + asset_tags  (plano definitional, §4.0)
+    dat/raw         → v_process_readings   (mediciones desempaquetadas)
+    diag            → v_process_readings   (salud del equipo, canal NOA)
     sts             → v_device_signals     (señales de estado)
     evt + dat/der   → alerts               (eventos y alarmas)
+
+Las categorías que devuelve son las del contrato, no las de las tablas: `diag` no
+se declara como `dat` aunque comparta almacenamiento, y `def` aparece en el árbol
+como cualquier otra aunque no sea una serie temporal.
 """
 from fastapi import APIRouter, HTTPException, Query
 
@@ -36,15 +42,21 @@ def list_topics(prefix: str | None = None) -> dict:
     """
     rows = fetch_all(
         """
-        SELECT mqtt_topic AS topic, 'dat' AS categoria,
+        SELECT mqtt_topic AS topic,
+               CASE WHEN mqtt_topic LIKE '%%/diag' THEN 'diag' ELSE 'dat' END AS categoria,
                count(*) AS mensajes, max(ts) AS ultimo
-        FROM sensor_readings WHERE mqtt_topic LIKE %(like)s GROUP BY 1
+        FROM sensor_readings WHERE mqtt_topic LIKE %(like)s GROUP BY 1, 2
         UNION ALL
         SELECT mqtt_topic, 'sts', count(*), max(ts)
         FROM device_status WHERE mqtt_topic LIKE %(like)s GROUP BY 1
         UNION ALL
         SELECT mqtt_topic, 'evt', count(*), max(ts)
         FROM alerts WHERE mqtt_topic LIKE %(like)s GROUP BY 1
+        UNION ALL
+        -- `def` es un catálogo con revisiones, no un flujo: `mensajes` es la
+        -- revisión vigente y `ultimo` cuándo se materializó.
+        SELECT mqtt_topic, 'def', rev, ingested_at
+        FROM assets WHERE mqtt_topic LIKE %(like)s
         ORDER BY 1
         """,
         {"like": f"{prefix}%" if prefix else "%"},
@@ -65,8 +77,20 @@ def get_topic(
 
     if agg and agg not in _AGG:
         raise HTTPException(422, f"agg inválido: {agg!r} — usa {'/'.join(_AGG)}")
-    if agg and categoria != "dat":
+    if agg and categoria not in ("dat", "diag"):
         raise HTTPException(422, f"agg solo aplica a datos de proceso, no a '{categoria}'")
+    # `def` declara el modelo del activo: tiene revisiones, no serie temporal.
+    if categoria == "def" and (desde or hasta or rango):
+        raise HTTPException(422, "la categoría 'def' no tiene serie temporal: es un "
+                                 "catálogo con revisiones. Pídelo sin parámetros de tiempo.")
+
+    # `def` no es un valor sino el modelo del activo: identidad en `meta`,
+    # diccionario de variables en `data` (§4.0).
+    if categoria == "def":
+        variables, activo = _definicion(topic)
+        if not activo:
+            raise HTTPException(404, f"sin definición materializada para {topic!r}")
+        return envelope(variables, topic=topic, categoria=categoria, **activo)
 
     # §3.1: sin ningún parámetro de tiempo, se devuelve el último valor conocido
     # (el equivalente histórico del mensaje retained del broker).
@@ -85,16 +109,52 @@ def get_topic(
 def _categoria(topic: str) -> str:
     """Deduce la categoría UNS del tópico (misma lógica que el consumer, en espejo)."""
     seg = topic.strip("/").split("/")
+    if "def" in seg:
+        return "def"
+    if "diag" in seg:
+        return "diag"
     if "sts" in seg:
         return "sts"
     if "evt" in seg or "der" in seg:
         return "evt"
-    return "dat"  # dat/raw y diag
+    return "dat"
+
+
+def _definicion(topic: str) -> tuple[list[dict], dict]:
+    """El `def` de un activo: (diccionario de variables, identidad del activo).
+
+    Devuelve los campos SUELTOS —unidad, canal, umbral, límites— y no una cadena
+    ya compuesta: formatear es cosa de quien pinta, y un consumidor de terceros
+    quiere el dato, no nuestra tipografía.
+    """
+    filas = fetch_all(
+        """
+        SELECT a.ingested_at AS ts, a.src, a.rev, a.body,
+               t.field, t.display_name, t.unit, t.channel,
+               t.deadband, t.min_limit, t.max_limit, t.is_numeric
+        FROM assets a
+        LEFT JOIN asset_tags t ON t.src = a.src
+        WHERE a.mqtt_topic = %s
+        ORDER BY t.channel, t.field
+        """,
+        (topic,),
+    )
+    if not filas:
+        return [], {}
+
+    cab = filas[0]
+    activo = {"src": cab["src"], "rev": cab["rev"], "asset": cab["body"] or {}}
+    variables = [
+        {k: f[k] for k in ("ts", "src", "field", "display_name", "unit",
+                           "channel", "deadband", "min_limit", "max_limit", "is_numeric")}
+        for f in filas if f["field"]
+    ]
+    return variables, activo
 
 
 def _latest(topic: str, categoria: str) -> list[dict]:
     """Último valor por campo/señal de ese tópico."""
-    if categoria == "dat":
+    if categoria in ("dat", "diag"):
         return fetch_all(
             """
             SELECT DISTINCT ON (field) ts, src, field, display_name,
@@ -124,7 +184,7 @@ def _latest(topic: str, categoria: str) -> list[dict]:
 
 def _history(topic: str, categoria: str, desde, hasta, agg: str | None) -> list[dict]:
     """Serie temporal del tópico en la ventana pedida."""
-    if categoria == "dat":
+    if categoria in ("dat", "diag"):
         if agg:
             return fetch_all(
                 """

@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as api from './client';
-import type { BizParamIn, KpiIn, Severity, TagIn, TimeParams } from './types';
+import type { BizParamIn, KpiIn, Severity, TimeParams } from './types';
 
 export function useKpiCatalog() {
   return useQuery({
@@ -92,24 +92,6 @@ export function useAssetTags(src?: string) {
   return useQuery({
     queryKey: ['asset-tags', src ?? ''],
     queryFn: () => api.adminListTags(src),
-  });
-}
-
-export function usePutTag() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ src, field, body }: { src: string; field: string; body: TagIn }) =>
-      api.adminPutTag(src, field, body),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['asset-tags'] }),
-  });
-}
-
-export function useDeleteTag() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ src, field }: { src: string; field: string }) =>
-      api.adminDeleteTag(src, field),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['asset-tags'] }),
   });
 }
 

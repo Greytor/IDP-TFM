@@ -483,9 +483,11 @@ y publica el `dat/raw` de cada uno; por eso los datos de proceso aparecen bajo e
 los origina, aunque sea el edge quien físicamente los publique. Lo único propio del gateway
 es su `diag`.
 
-**Nota — `def` del gateway.** `iot2050` no publica `def` todavía: sus métricas por contenedor
-son dinámicas y no se pueden declarar estáticamente. Es la excepción documentada en
-`docs/arquitectura/pendientes.md`.
+**Nota — `def` del gateway.** `iot2050` publica su `def` como cualquier otro activo, pero no
+desde un fichero estático: sus métricas por contenedor dependen de qué contenedores corren, así
+que **deriva la definición del propio payload que acaba de medir**. Por construcción no puede
+divergir del flujo —si una variable se publica, está declarada, porque ambas salen del mismo
+diccionario— y si el conjunto de campos cambia, se republica el `def` con `rev` incrementado.
 
 ## 7. Payloads por dispositivo
 

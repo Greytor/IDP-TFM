@@ -47,18 +47,6 @@ export function plantMidnightIso(timeZone: string | undefined): string {
 
 /** La fecha de hace N días según el reloj de la planta ("2026-07-14"). Para
     prefijar selectores: la fecha del navegador puede ir un día por delante. */
-export function plantDateDaysAgo(timeZone: string | undefined, dias: number): string {
-  const d = new Date(Date.now() - dias * 86_400_000);
-  if (!timeZone) return d.toISOString().slice(0, 10);
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(d);
-}
-
-/** "2026-07-01T14:30" en `timeZone` → ISO UTC ("2026-07-01T19:30:00.000Z"). */
 export function plantWallToIso(wall: string, timeZone: string | undefined): string {
   if (!wall) return '';
   if (!timeZone) return new Date(wall).toISOString(); // huso del navegador

@@ -51,7 +51,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "textMode": "value",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/.*/", "values": false }
       },
       "targets": [
         {

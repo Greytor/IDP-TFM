@@ -15,8 +15,8 @@ Decisiones de referencia: [ADR-011](../../docs/adr/ADR-011-Gateway-IOT2050.md)
 |---|---|---|---|---|
 | **NanoMQ** | `emqx/nanomq:0.25.1` | 1883, 8083 | 256M | Broker MQTT local + bridge QoS 1 store-and-forward a EMQX central |
 | **Node-RED** | build (`nodered/`) | 1880 | 512M | Cliente Modbus TCP + OPC UA, normalización UNS, Dashboard local (`/ui`) |
-| **eKuiper** | `lfedge/ekuiper:latest` | 9081 | 256M | Stream processing (deadband, KPIs, anomalías). Montado e inactivo |
-| **eKuiper Manager** | `emqx/ekuiper-manager:latest` | 9082 | 192M | UI web de administración de eKuiper (admin/desarrollo) |
+| **eKuiper** | `lfedge/ekuiper:2.4.1-alpine` | 9081 | 256M | Stream processing (deadband, KPIs, anomalías). Montado e inactivo |
+| **eKuiper Manager** | `emqx/ekuiper-manager:1.9.5-plus` | 9082 | 192M | UI web de administración de eKuiper (admin/desarrollo) |
 | **edge-health** | build (`edge-health/`) | — | 128M | Publica la salud del edge (host + contenedores) al UNS vía NanoMQ, topic `diag`, envelope dat `{v,u,q}` (UNS §7.5) |
 
 Los topes de RAM son **límites (caps), no reservas**: el uso real en reposo es

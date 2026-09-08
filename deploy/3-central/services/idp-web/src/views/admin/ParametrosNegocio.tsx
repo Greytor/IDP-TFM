@@ -133,8 +133,8 @@ function ParamEditor({
       <div className="dialog narrow" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <h2>{initial.isNew ? 'Nuevo parámetro' : `Editar '${initial.param}'`}</h2>
         <p className="label" style={{ marginBottom: 14 }}>
-          El cambio afecta a todos los cálculos monetarios desde este momento —
-          web y PDFs nuevos. Los reportes ya generados conservan sus supuestos.
+          El cambio afecta a todos los cálculos monetarios desde este momento: las
+          vistas de oro lo leen en la siguiente consulta, sin reiniciar nada.
         </p>
 
         <label className="field">

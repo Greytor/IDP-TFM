@@ -1,9 +1,17 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- GOLD LAYER — KPIs y agregados de negocio, listos para Grafana
 -- ════════════════════════════════════════════════════════════════════════════
--- Depende de la capa silver (v_process_readings, v_device_signals).
--- Aplicar DESPUÉS de silver.sql (silver hace DROP CASCADE de sus vistas, lo
--- que arrastra estas — re-aplicar este archivo tras cada re-apply de silver).
+-- Depende de DOS cosas, y ambas tienen que existir antes:
+--   · la capa silver (v_process_readings, v_device_signals)
+--   · el agregado continuo ca_kpi_1h, de continuous_aggregates.sql — lo leen
+--     v_production_hourly, v_throughput_1m, v_line_availability_hourly,
+--     v_energy_hourly y v_oee_hourly.
+-- ORDEN sobre una base limpia:  silver.sql → continuous_aggregates.sql → gold.sql
+-- Invertir los dos últimos falla con «relation "ca_kpi_1h" does not exist».
+--
+-- Re-aplicar silver.sql arrastra estas vistas (hace DROP CASCADE), así que hay
+-- que re-aplicar este archivo después. El CAgg no se ve afectado: cuelga de
+-- bronce, no de plata.
 --
 -- Muestreo (contrato UNS v0.3, §3.5 — RBE): las muestras YA NO son uniformes.
 -- Cada variable publica al cambiar (deadband) y como mínimo cada 30 s

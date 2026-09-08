@@ -111,7 +111,7 @@ services:
     networks:
       - greytec-central
   mqtt-bridge:
-    image: redpandadata/connect:4
+    image: redpandadata/connect:4.108.0
     container_name: greytec-mqtt-bridge
     restart: unless-stopped
     environment:
@@ -162,7 +162,7 @@ services:
     environment:
       KAFKA_BOOTSTRAP: "redpanda:9092"
       # dat.raw admite un segmento extra opcional: la variable en topics v0.3 (…dat.raw.mass_flow_kgh)
-      KAFKA_PATTERN: "^greytec\\..*\\.(dat\\.raw(\\.[a-z0-9_]+)?|dat\\.der|sts|diag|evt)$$"
+      KAFKA_PATTERN: "^greytec\\..*\\.(def|dat\\.raw(\\.[a-z0-9_]+)?|dat\\.der|sts|diag|evt)$$"
       KAFKA_GROUP: "greytec-tsdb-writer"
       PG_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB}"
     # Arranca solo cuando broker y DB responden. El retry interno de main.py se queda:
@@ -202,6 +202,12 @@ services:
       # El huso de la planta que sirve GET /api/v1/config a la SPA. La MISMA
       # variable del .env que alimenta al motor de reportes: una sola verdad.
       SITE_TZ: ${REPORT_SITE_TZ:-America/Guayaquil}
+      # URL de Grafana que la SPA usa para embeber los tableros. La resuelve el
+      # NAVEGADOR del usuario, no el contenedor: por eso no puede ser el nombre
+      # de servicio `grafana` ni `localhost` — tiene que ser una dirección
+      # alcanzable desde fuera. Se reutiliza la misma variable que configura el
+      # propio Grafana, para que no haya dos verdades que mantener.
+      GRAFANA_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -272,11 +278,19 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      # La consola IDP embebe el tablero Home en un <iframe> (vista Dashboards).
+      # Sin esto Grafana responde X-Frame-Options: deny y el navegador rechaza el
+      # marco sin mensaje visible — el panel sale en blanco y no hay error que leer.
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
       # Acceso anónimo de solo lectura para el demo (datos simulados, sin riesgo real).
       # Alcance a los 4 dashboards del demo vía carpeta + permisos (ver dashboards/README.md) —
       # no vía "Public dashboard" por tablero (no soporta navegación entre públicos).
       GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_NAME: "GREYTEC"
+      # "Main Org." es la organización que Grafana crea de fábrica. Poner aquí otro
+      # nombre exige renombrarla a mano en la UI, y entonces el despliegue desde
+      # cero deja de funcionar solo: el acceso anónimo no encontraría su
+      # organización y el iframe caería a la pantalla de login.
+      GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
       GF_AUTH_ANONYMOUS_ORG_ROLE: "Viewer"
     volumes:
       - grafana_data:/var/lib/grafana

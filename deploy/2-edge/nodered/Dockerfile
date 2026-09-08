@@ -1,4 +1,4 @@
-FROM nodered/node-red:latest
+FROM nodered/node-red:5.0.6
 
 # Nodos del stack edge (ADR-013):
 #   - node-red-contrib-modbus : cliente Modbus TCP (OpenPLC, medidores)

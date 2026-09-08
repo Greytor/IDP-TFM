@@ -1,0 +1,7 @@
+# Este repositorio se despliega en Linux (Docker, gateway ARM, VM del centro).
+# Un `\r` de Windows dentro de un .env o de un script rompe en silencio: el valor
+# queda con el retorno de carro DENTRO y la autenticación falla sin error legible.
+#
+# `eol=lf` manda sobre core.autocrlf, así que quien clone en Windows recibe LF
+# igualmente y puede copiar los ficheros a un Linux sin convertir nada.
+* text=auto eol=lf

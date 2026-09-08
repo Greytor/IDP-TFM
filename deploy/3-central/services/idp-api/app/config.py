@@ -14,17 +14,6 @@ class Settings(BaseSettings):
     # Cadena de conexión a TimescaleDB. La inyecta docker-compose (ver PG_DSN del servicio).
     pg_dsn: str
 
-    # ─── MQTT — solo lo usa el write-back; el contenedor de la API los ignora ────
-    # Llevan default para que la API arranque sin necesidad de credenciales MQTT.
-    mqtt_host: str = "emqx"
-    mqtt_port: int = 1883
-    mqtt_user: str = ""
-    mqtt_password: str = ""
-
-    # ─── Write-back (contrato UNS §7.6) ─────────────────────────────────────────
-    writeback_tick_s: int = 30       # cada cuánto recalcula los KPIs
-    writeback_heartbeat_s: int = 60  # republica aunque no haya cambiado (§3.5)
-
     # Orígenes autorizados a llamar la API desde un NAVEGADOR (contrato API §2.6).
     # Separados por coma. Solo afecta a navegadores: curl, PowerBI y el motor de PDF
     # ignoran CORS. Sin esto, la web app recibe la respuesta bloqueada por el navegador.

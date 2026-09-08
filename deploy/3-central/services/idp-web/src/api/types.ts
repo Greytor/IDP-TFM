@@ -40,7 +40,7 @@ export interface AppConfig {
 
 export interface UnsTopic {
   topic: string;
-  categoria: 'dat' | 'sts' | 'evt';
+  categoria: 'def' | 'dat' | 'diag' | 'sts' | 'evt';
   mensajes: number;
   ultimo: string;
 }
@@ -55,6 +55,19 @@ export interface UnsReading {
   value_text: string | null;
   unit: string | null;
   quality: string | null;
+}
+
+/** Identidad del activo que declara un `def` (contrato §4.0, objeto `asset`). */
+export interface UnsAsset {
+  display_name?: string;
+  type?: string;
+  manufacturer?: string;
+  model?: string;
+  serial?: string;
+  area?: string;
+  parent?: string;
+  protocol?: string;
+  endpoint?: string;
 }
 
 /* ── Familia 2 — KPIs ── */
@@ -116,7 +129,6 @@ export interface AssetTag {
   is_numeric: boolean;
 }
 
-export type TagIn = Omit<AssetTag, 'src' | 'field'>;
 
 /** Parámetro de negocio (el "tercer catálogo": qué vale el negocio). */
 export interface BusinessParam {

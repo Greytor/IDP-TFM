@@ -205,7 +205,7 @@ def build_definition(payload, rev):
         "ts": now_iso(),
         "src": SRC,
         "rev": rev,
-        "contract": "0.4",
+        "contract": "0.5",
         "asset": {
             "display_name": "Gateway de adquisición de borde",
             "type": "gateway",

@@ -76,6 +76,11 @@ CREATE TABLE IF NOT EXISTS assets (
     ingested_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- El topic del que vino la definición. Lo necesita el espejo del namespace
+-- (GET /api/v1/uns/topics): sin esta columna el plano definitional se materializa
+-- pero queda invisible en el árbol del espacio de nombres que lo transportó.
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS mqtt_topic TEXT;
+
 CREATE TABLE IF NOT EXISTS asset_tags (
     src          TEXT    NOT NULL,
     field        TEXT    NOT NULL,
@@ -100,10 +105,15 @@ ALTER TABLE asset_tags ADD COLUMN IF NOT EXISTS rev      INTEGER;
 
 -- Variables publicadas que ningún `def` declara: viola la Regla 0 del contrato (§11).
 -- Debe devolver 0 filas. Es la comprobación que hace verificable el contrato.
+-- jsonb_object_keys() se expande con CROSS JOIN LATERAL, no se llama dentro del
+-- WHERE: PostgreSQL prohíbe las funciones que devuelven conjuntos en esa posición
+-- («set-returning functions are not allowed in WHERE»). Es el mismo patrón que
+-- usa v_process_readings en silver.sql.
 CREATE OR REPLACE VIEW v_contrato_variables_sin_declarar AS
-SELECT DISTINCT r.src, jsonb_object_keys(r.payload) AS field
+SELECT DISTINCT r.src, f.field
 FROM   sensor_readings r
+CROSS JOIN LATERAL jsonb_object_keys(r.payload) AS f(field)
 WHERE  NOT EXISTS (
     SELECT 1 FROM asset_tags t
-    WHERE t.src = r.src AND t.field = jsonb_object_keys(r.payload)
+    WHERE t.src = r.src AND t.field = f.field
 );

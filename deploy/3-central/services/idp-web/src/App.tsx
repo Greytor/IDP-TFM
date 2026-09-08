@@ -16,7 +16,6 @@ import { Salud } from './views/admin/Salud';
 import { Alarmas } from './views/demo/Alarmas';
 import { Dashboards } from './views/demo/Dashboards';
 import { Namespace } from './views/demo/Namespace';
-import { Reportes } from './views/demo/Reportes';
 import { Resumen } from './views/demo/Resumen';
 
 const queryClient = new QueryClient({
@@ -57,7 +56,6 @@ export default function App() {
           <Route element={<Shell />}>
             <Route index element={<Resumen />} />
             <Route path="dashboards" element={<Dashboards />} />
-            <Route path="reportes" element={<Reportes />} />
             <Route path="alarmas" element={<Alarmas />} />
             <Route path="namespace" element={<Namespace />} />
             <Route

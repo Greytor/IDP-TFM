@@ -79,7 +79,7 @@ services:
   # los streams/reglas se crean vía la REST API (:9081). La fuente MQTT por
   # defecto ya apunta a NanoMQ (MQTT_SOURCE__DEFAULT__SERVER).
   ekuiper:
-    image: lfedge/ekuiper:latest
+    image: lfedge/ekuiper:2.4.1-alpine
     container_name: greytec-ekuiper
     restart: unless-stopped
     environment:
@@ -107,7 +107,7 @@ services:
   #   Web:   http://10.10.10.100:9082   (login por defecto: admin / public)
   #   Tras entrar, "Add Service" -> endpoint http://ekuiper:9081
   ekuiper-manager:
-    image: emqx/ekuiper-manager:latest
+    image: emqx/ekuiper-manager:1.9.5-plus
     container_name: greytec-ekuiper-manager
     restart: unless-stopped
     environment:
@@ -141,6 +141,10 @@ services:
       - MQTT_TOPIC=greytec/demo/campo/edge/iot2050/diag
       - SRC=iot2050
       - INTERVAL=10
+      # rev del `def` del gateway. Su revisión es dinámica (sube sola si cambia el
+      # conjunto de contenedores) pero se reinicia con el proceso, así que al cambiar
+      # la definición hay que subir este suelo o el UPSERT del central la ignora.
+      - DEF_REV=3
       - CTR_PREFIX=greytec-
       - HOST_PROC=/host/proc
     volumes:

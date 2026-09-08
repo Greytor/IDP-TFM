@@ -11,7 +11,6 @@ import { useAuth } from '../auth/AuthProvider';
 const DEMO_LINKS = [
   { to: '/', label: 'Resumen', end: true },
   { to: '/dashboards', label: 'Dashboards' },
-  { to: '/reportes', label: 'Reportes' },
   { to: '/alarmas', label: 'Alarmas' },
   { to: '/namespace', label: 'Namespace' },
 ];

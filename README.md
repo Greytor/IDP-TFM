@@ -41,9 +41,9 @@ materializadas descartables y reconstruibles desde él.
 | Entender qué se publica y con qué garantías | [`docs/contracts/UNS.md`](docs/contracts/UNS.md) — **el artefacto central del trabajo** |
 | Saber por qué cada pieza es la que es | [`docs/adr/`](docs/adr/README.md) — 14 decisiones con sus alternativas |
 | Ver qué entra y qué no en el alcance | [`docs/arquitectura/alcance.md`](docs/arquitectura/alcance.md) |
-| Desplegarlo | [`docs/arquitectura/pendientes.md`](docs/arquitectura/pendientes.md) §4 |
+| Desplegarlo | [`docs/arquitectura/despliegue.md`](docs/arquitectura/despliegue.md) |
 | Acceder una vez levantado | `http://localhost` (plataforma) y `http://localhost:3000` (Grafana) |
-| Saber qué falta por cerrar | [`docs/arquitectura/pendientes.md`](docs/arquitectura/pendientes.md) |
+| Verificar que el contrato se cumple | [`docs/arquitectura/despliegue.md`](docs/arquitectura/despliegue.md) §4 |
 
 ## El contrato es lo que hay que leer
 
@@ -73,7 +73,7 @@ deploy/
 ```
 
 Cada capa se despliega con `docker compose up -d --build` desde su carpeta. El orden y la
-verificación están en `docs/arquitectura/pendientes.md` §4.
+verificación están en `docs/arquitectura/despliegue.md`.
 
 **No hace falta dominio ni cuenta de usuario.** El stack se levanta y se entra: no hay
 proveedor de identidad ni pantalla de login, porque lo que se demuestra es la arquitectura

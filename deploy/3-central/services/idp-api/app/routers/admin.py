@@ -51,15 +51,6 @@ class KpiIn(BaseModel):
     enabled: bool = True
 
 
-class TagIn(BaseModel):
-    display_name: str
-    unit: str = ""
-    area: str = ""
-    min_limit: float | None = None
-    max_limit: float | None = None
-    is_numeric: bool = True
-
-
 class BizParamIn(BaseModel):
     value: float
     unit: str = ""
@@ -227,36 +218,14 @@ def list_tags(src: str | None = Query(None, description="Filtra por dispositivo"
     return envelope(fetch_all(f"SELECT {_TAG_COLS} FROM asset_tags ORDER BY src, field"))
 
 
-@router.put("/asset-tags/{src}/{field}")
-def upsert_tag(src: str, field: str, t: TagIn) -> dict:
-    """Crea o reemplaza la etiqueta de un (src, field). La PK es el par, va en la ruta."""
-    if t.min_limit is not None and t.max_limit is not None and t.min_limit > t.max_limit:
-        raise HTTPException(422, f"min_limit ({t.min_limit}) > max_limit ({t.max_limit})")
-    fila = execute(
-        f"""
-        INSERT INTO asset_tags ({_TAG_COLS})
-        VALUES (%(src)s, %(field)s, %(display_name)s, %(unit)s, %(area)s,
-                %(min_limit)s, %(max_limit)s, %(is_numeric)s)
-        ON CONFLICT (src, field) DO UPDATE SET
-            display_name = EXCLUDED.display_name, unit = EXCLUDED.unit,
-            area = EXCLUDED.area, min_limit = EXCLUDED.min_limit,
-            max_limit = EXCLUDED.max_limit, is_numeric = EXCLUDED.is_numeric
-        RETURNING {_TAG_COLS}
-        """,
-        {"src": src, "field": field, **t.model_dump()},
-    )
-    return envelope(fila)
-
-
-@router.delete("/asset-tags/{src}/{field}")
-def delete_tag(src: str, field: str) -> dict:
-    fila = execute(
-        "DELETE FROM asset_tags WHERE src = %s AND field = %s RETURNING src, field",
-        (src, field),
-    )
-    if not fila:
-        raise HTTPException(404, f"Etiqueta no registrada: {src}/{field}")
-    return envelope({"deleted": f"{src}/{field}"})
+# El diccionario de variables NO se edita desde aquí. Se materializa desde la
+# categoría `def` del espacio de nombres, que publica el productor: el gateway es
+# la autoridad sobre qué significan sus propias variables (contrato §4.0). Una vía
+# de escritura en esta tabla sería una aplicación escribiendo en una capa derivada
+# —lo que prohíbe el RNF4— y además sería inútil: el UPSERT del consumidor reaplica
+# el `def` retenido en cada reconexión del puente y revertiría la edición.
+# Para cambiar una etiqueta: editar definitions.yml en el borde, subir `rev` y
+# republicar. Esta vista es de solo lectura por diseño.
 
 
 # ─── business_params ────────────────────────────────────────────────────────
@@ -311,20 +280,17 @@ def upsert_business_param(param: str, b: BizParamIn) -> dict:
 def services() -> dict:
     """Los servicios del IDP y dónde está la spec de cada uno.
 
-    Para qué: que la consola pinte **un solo explorador con todas las APIs** —
-    SwaggerUI acepta varias specs con un desplegable (opción `urls`). Resuelve la
-    queja de las dos `/docs` **sin fusionar los servicios**, que era el punto de
-    ADR-022: la separación es de EJECUCIÓN, la unificación va en el BORDE.
+    Para qué: que la consola pinte el explorador sin llevar escrita ninguna
+    dirección — SwaggerUI acepta la lista por la opción `urls`. Esta edición
+    despliega un solo servicio (ver `docs/arquitectura/alcance.md`); el endpoint
+    devuelve una lista porque la separación de servicios es de EJECUCIÓN y la
+    unificación va en el BORDE, que es el punto de la ADR-022.
 
     Rutas RELATIVAS a propósito. Este endpoint no sabe —ni debe— por qué dominio
-    entró el usuario: hoy `localhost`, en una instalación real será otro. Que las
+    entró el usuario: hoy una IP, en una instalación real será otro. Que las
     resuelva el navegador contra su propio origen es lo que permite que la misma
     imagen sirva en cualquier despliegue. Poner el dominio aquí obligaría a
     configurarlo, y ya hay bastantes sitios donde escribirlo mal.
-
-    Lo que este endpoint NO hace, y es deliberado: **no consulta la salud de los
-    demás**. Hoy la dependencia va `reports → api`; que la API llame a reports
-    cerraría un ciclo. El navegador puede pedir los dos `/health` por su cuenta.
     """
     return envelope([
         {
@@ -338,17 +304,6 @@ def services() -> dict:
             "openapi_url": "/openapi.json",
             "docs_url": None,
             "families": ["uns", "kpi", "alerts", "business", "admin"],
-        },
-        {
-            "name": "reports",
-            "title": "Greytec IDP — Reportes",
-            # Su versión la sirve él mismo en su OpenAPI; aquí no se duplica para
-            # no tener dos verdades sobre lo mismo.
-            "version": None,
-            "base_path": "/api/v1/reports",
-            "openapi_url": "/api/v1/reports/openapi.json",
-            "docs_url": "/api/v1/reports/docs",
-            "families": ["reports"],
         },
     ])
 

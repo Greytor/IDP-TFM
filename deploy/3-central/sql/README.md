@@ -56,7 +56,7 @@ por tiempo automáticamente).
 `../consumers/redpanda-to-tsdb/main.py`. Flujo por mensaje:
 
 1. **Suscripción por regex** a los topics Kafka de categorías del contrato:
-   `^greytec\..*\.(dat\.raw(\.[a-z0-9_]+)?|dat\.der|sts|diag|evt)$`
+   `^greytec\..*\.(def|dat\.raw(\.[a-z0-9_]+)?|dat\.der|sts|diag|evt)$`
    El grupo `(\.[a-z0-9_]+)?` es el segmento de variable de los topics v0.3
    (`…dat.raw.mass_flow_kgh`). ⚠ El valor operativo vive en
    `docker-compose.yml` (env `KAFKA_PATTERN`) y **pisa** el default del código
@@ -97,13 +97,19 @@ por tiempo automáticamente).
 ## Silver — `silver.sql` (aplicar a mano)
 
 ```bash
-docker exec -i greytec-timescaledb psql -U <USER> -d <DB> < silver.sql
-docker exec -i greytec-timescaledb psql -U <USER> -d <DB> < gold.sql   # SIEMPRE después
+docker exec -i greytec-timescaledb psql -U <USER> -d <DB> -v ON_ERROR_STOP=1 < silver.sql
+docker exec -i greytec-timescaledb psql -U <USER> -d <DB> -v ON_ERROR_STOP=1 < continuous_aggregates.sql
+docker exec -i greytec-timescaledb psql -U <USER> -d <DB> -v ON_ERROR_STOP=1 < gold.sql
 ```
+
+⚠ **El orden es obligatorio sobre una base limpia.** `continuous_aggregates.sql`
+crea `ca_kpi_1h` leyendo de bronce, y cinco vistas de `gold.sql` leen de ese
+agregado: invertirlos falla con «relation "ca_kpi_1h" does not exist».
 
 ⚠ `silver.sql` hace `DROP VIEW … CASCADE` (las vistas gold dependen de las
 silver), así que **re-aplicar silver borra el gold** — por eso gold.sql se
-re-aplica siempre a continuación. Ambos son idempotentes y no tocan datos.
+re-aplica siempre a continuación. El CAgg no se ve afectado por ese CASCADE:
+cuelga de bronce, no de plata. Los tres son idempotentes y no tocan datos.
 
 | Objeto | Qué es |
 |---|---|

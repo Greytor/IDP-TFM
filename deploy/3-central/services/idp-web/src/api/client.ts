@@ -27,7 +27,6 @@ import type {
   KpiRow,
   ServiceInfo,
   Severity,
-  TagIn,
   TimeParams,
   UnsTopic,
 } from './types';
@@ -148,41 +147,6 @@ export function getBusinessParams(): Promise<Envelope<BusinessParam[]>> {
   return request('/api/v1/business-params');
 }
 
-/* ── Familia 3 — Reportes ── */
-
-/** POST del contrato §3.3; devuelve el PDF como Blob (download=false → inline).
-    `alarms`: 'full' incluye el anexo cronológico; 'summary' solo el censo. */
-export async function generateReport(
-  p: TimeParams,
-  alarms: 'summary' | 'full' = 'full',
-): Promise<Blob> {
-  const headers = new Headers();
-  const token = getAccessToken();
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-
-  let res: Response;
-  try {
-    res = await fetch(
-      `/api/v1/reports/production${timeQuery({ ...p, format: 'pdf', download: 'false', alarms })}`,
-      { method: 'POST', headers },
-    );
-  } catch {
-    throw new ApiError(0, 'La API no responde.');
-  }
-  if (!res.ok) {
-    let detail = `Error ${res.status}`;
-    try {
-      const body = await res.json();
-      if (typeof body?.detail === 'string') detail = body.detail;
-    } catch {
-      /* sin cuerpo JSON */
-    }
-    if (res.status === 401) onUnauthorized?.();
-    throw new ApiError(res.status, detail);
-  }
-  return res.blob();
-}
-
 /* ── Familia 4 — Administración (exige rol admin; el 403 manda) ── */
 
 export function adminListKpis(): Promise<Envelope<AdminKpi[]>> {
@@ -202,21 +166,6 @@ export function adminDeleteKpi(name: string): Promise<Envelope<KpiDeleteResult>>
 
 export function adminListTags(src?: string): Promise<Envelope<AssetTag[]>> {
   return request(`/api/v1/admin/asset-tags${timeQuery({ src })}`);
-}
-
-export function adminPutTag(
-  src: string,
-  field: string,
-  body: TagIn,
-): Promise<Envelope<AssetTag>> {
-  return request(`/api/v1/admin/asset-tags/${src}/${field}`, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  });
-}
-
-export function adminDeleteTag(src: string, field: string): Promise<Envelope<{ deleted: string }>> {
-  return request(`/api/v1/admin/asset-tags/${src}/${field}`, { method: 'DELETE' });
 }
 
 export function adminPutBusinessParam(
