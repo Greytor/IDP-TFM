@@ -394,8 +394,9 @@ troncal y los puertos de acceso de cada zona.]
 ```
 
 ```
-[CAPTURA 19 — Las interfaces de OPNsense con las tres redes configuradas y sus
-direcciones.]
+[CAPTURA 19 — Las interfaces de OPNsense: (a) las tres redes con sus direcciones, y (b) los
+dispositivos VLAN, donde las tres etiquetas cuelgan del mismo padre físico, que es el enlace
+troncal descrito arriba.]
 ```
 
 ```
@@ -409,6 +410,21 @@ denegado por defecto.]
 cualquier regla hacia operación. Es la evidencia gráfica de la fila 6 de la matriz de
 conductos, que es la propiedad que el trabajo demuestra.]
 ```
+
+La zona intermedia tiene su propio conjunto de reglas, y es donde aparece el único conducto que desciende hacia la operación.
+
+```
+[CAPTURA 25 — El conjunto de reglas de la zona intermedia. La primera regla es el conducto
+de administración descrito abajo; la segunda deniega explícitamente cualquier otro tráfico
+hacia operación. Una de las reglas corresponde a un servicio ajeno al trabajo: el
+cortafuegos del laboratorio da servicio también a equipos domésticos que comparten bastidor.]
+```
+
+**El acceso remoto de administración.** Una planta en la que no se puede entrar a mantener no es sostenible, así que el plano de control existe y está declarado. Se resuelve con una red superpuesta con autenticación por dispositivo cuyo único nodo es el propio cortafuegos: el administrador llega hasta él desde fuera y, desde ahí, alcanza la zona intermedia. El descenso hacia la operación no es libre, lo autoriza una sola regla, desde un único equipo de la zona intermedia, por SSH y con registro. Es el patrón de acceso remoto que recomienda IEC 62443, donde la conexión **termina en la zona intermedia y se vuelve a establecer bajo control** en lugar de alcanzar la celda directamente.
+
+Que el nodo de la red superpuesta esté en el cortafuegos y no en el gateway de borde es deliberado, y es lo que mantiene cierta la fila 3 de la matriz de conductos. Si el gateway tuviera que hablar con el plano de control de un servicio en la nube para ser administrable, la zona de operación necesitaría salida a Internet, que es precisamente lo que la partición niega. Con el nodo en el cortafuegos, la celda no habla con Internet en ningún caso.
+
+Los dos planos no comparten camino, y esa separación tiene una consecuencia comprobable: si el canal de administración cae, la telemetría sigue publicándose, porque el puente del borde solo necesita el conducto MQTT hacia la zona intermedia. Es lo contrario del error habitual de resolver el dato con una red privada virtual permanente, que convierte un flujo unidireccional en un canal bidireccional de propósito general.
 
 La comprobación de que la partición funciona no es que las reglas estén escritas sino que el tráfico prohibido efectivamente no pasa. Desde la estación de trabajo de la zona de negocio no hay ruta hacia ningún dispositivo de campo, y el intento queda registrado en el cortafuegos.
 

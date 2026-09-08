@@ -39,6 +39,7 @@ cortafuegos, que es quien enruta entre las tres redes y aplica las reglas.
 | 4 | IT | DMZ | HTTP (80) hacia la web y los paneles | **Permitir** | Acceso al dato contextualizado |
 | 5 | IT | DMZ | Administración remota | Permitir con autenticación fuerte | Plano de control, separado del de datos |
 | 6 | IT | OT | Cualquiera | **Denegar** | No hace falta: es la propiedad que el trabajo demuestra |
+| 7 | DMZ | OT | SSH desde un único equipo | **Permitir** | Plano de control. Es el único conducto descendente, y no transporta dato: existe para poder administrar la celda |
 
 **La fila 6 es la que da sentido a la tabla.** Que no exista un conducto entre negocio y
 operación no es una carencia sino el resultado de que la arquitectura no lo necesita. Un
@@ -46,10 +47,14 @@ consumidor de negocio que quisiera el valor de un instrumento en una topología 
 tendría que alcanzarlo, y esa necesidad es la que abre el agujero. Aquí no lo alcanza porque
 no le hace falta: el dato ya está en la zona intermedia, contextualizado y con su definición.
 
-**No hay ninguna excepción descendente.** El contrato no define categoría de mando
-(`docs/contracts/UNS.md`, v0.5), así que ningún conducto baja hacia la operación. La
-direccionalidad es absoluta y no «unidireccional salvo por…», que es la formulación por la
-que estas arquitecturas se degradan con el tiempo.
+**No hay ninguna excepción descendente en el plano de datos.** El contrato no define
+categoría de mando (`docs/contracts/UNS.md`, v0.5), así que ningún dato baja hacia la
+operación. La direccionalidad del dato es absoluta y no «unidireccional salvo por…», que es
+la formulación por la que estas arquitecturas se degradan con el tiempo.
+
+La fila 7 no es una excepción a eso sino un plano distinto: transporta administración, no
+telemetría. Se declara aquí precisamente para que no sea una excepción tácita — un conducto
+que existe pero que nadie escribió es la forma en que estas particiones se erosionan.
 
 ## Plano de datos y plano de control
 
@@ -59,10 +64,21 @@ compartir camino.
 El **plano de datos** es la telemetría. Sale de la operación mediante una conexión iniciada
 desde dentro, así que no exige abrir ningún puerto entrante hacia la celda.
 
-El **plano de control** es el acceso administrativo. Viaja por un canal independiente con
-autenticación por clave. La consecuencia práctica de mantenerlos separados es que la
-telemetría no depende de que exista un túnel permanente, y que un fallo del canal de
-administración **no** interrumpe el dato.
+El **plano de control** es el acceso administrativo, y se resuelve con una red superpuesta
+con autenticación por dispositivo cuyo **único nodo es el propio cortafuegos**. El
+administrador llega hasta él desde fuera y alcanza la zona intermedia; el descenso hacia la
+operación lo autoriza la fila 7, desde un solo equipo, por SSH y con registro. La conexión
+termina en la zona intermedia y se vuelve a establecer bajo control, que es el patrón de
+acceso remoto de IEC 62443.
+
+Que el nodo esté en el cortafuegos y no en el gateway de borde es lo que mantiene cierta la
+fila 3. Un agente de administración instalado en el propio gateway tendría que hablar con
+el plano de control de su proveedor, y eso obligaría a dar salida a Internet a la zona de
+operación: se ganaría comodidad y se perdería la propiedad más difícil de conseguir.
+
+La consecuencia práctica de mantener separados los dos planos es que la telemetría no
+depende de que exista un túnel permanente, y que un fallo del canal de administración **no**
+interrumpe el dato.
 
 El error habitual es resolver la telemetría abriendo una red privada virtual permanente:
 eso convierte un flujo unidireccional en un canal bidireccional de propósito general y
