@@ -84,7 +84,7 @@ de datos. Es una decisión de alcance, documentada en `docs/arquitectura/alcance
 ```
 J. F. Desiderio Moreira, «Greytec IDP — arquitectura de referencia basada en Unified
 Namespace para la interoperabilidad OT-IT», repositorio de software, 2026. [En línea].
-Disponible en: https://github.com/<usuario>/IDP-TFM
+Disponible en: https://github.com/Greytor/IDP-TFM
 ```
 
 ## Licencia y propiedad intelectual
