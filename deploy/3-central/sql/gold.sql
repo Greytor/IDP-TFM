@@ -13,7 +13,7 @@
 -- que re-aplicar este archivo después. El CAgg no se ve afectado: cuelga de
 -- bronce, no de plata.
 --
--- Muestreo (contrato UNS v0.3, §3.5 — RBE): las muestras YA NO son uniformes.
+-- Muestreo (contrato UNS v0.5, §3.5 — RBE): las muestras YA NO son uniformes.
 -- Cada variable publica al cambiar (deadband) y como mínimo cada 30 s
 -- (heartbeat). Implicaciones para estas vistas:
 --   · avg() es "promedio de puntos publicados", no promedio ponderado en el
@@ -256,13 +256,15 @@ CREATE TABLE IF NOT EXISTS kpi_catalog (
     derived_from TEXT NOT NULL DEFAULT '',     -- src origen (contrato §4.1.b); varios = separados por coma
     time_column  TEXT NOT NULL DEFAULT 'hour', -- columna temporal de la vista (filtros from/to)
     unit         TEXT NOT NULL DEFAULT '',     -- unidad titular del KPI (la usa la API en meta)
-    -- Mapa campo → unidad para el write-back. Mismo rol que asset_tags para el dato
-    -- crudo: asset_tags mapea (src,field)→unidad; esto mapea (kpi,field)→unidad.
-    -- SUS CLAVES DEFINEN QUÉ CAMPOS SE PUBLICAN al UNS — lo que no esté aquí no sale
-    -- (ej. 'muestras' es un conteo interno que al SCADA no le sirve).
+    -- Mapa campo → unidad. Mismo rol que asset_tags para el dato crudo: asset_tags
+    -- mapea (src,field)→unidad; esto mapea (kpi,field)→unidad. Junto con `publish`
+    -- describe qué se republicaría al UNS, que es LÍNEA FUTURA y no se despliega en
+    -- esta edición (ver docs/arquitectura/alcance.md): ningún proceso los lee, y la
+    -- consola no los expone. Se conservan porque son parte de la definición del KPI
+    -- según el contrato §3.2, no configuración huérfana.
     units        JSONB NOT NULL DEFAULT '{}'::jsonb,
     description  TEXT NOT NULL DEFAULT '',
-    publish      BOOLEAN NOT NULL DEFAULT TRUE, -- ¿el write-back lo publica a MQTT?
+    publish      BOOLEAN NOT NULL DEFAULT TRUE, -- reservado: republicación al UNS (línea futura)
     enabled      BOOLEAN NOT NULL DEFAULT TRUE  -- desactivar sin borrar la fila
 );
 
@@ -404,10 +406,10 @@ LEFT JOIN v_energy_hourly e USING (hour)
 LEFT JOIN v_line_availability_hourly a USING (hour)
 ORDER BY pr.hour;
 
--- Registro en el catálogo. publish=FALSE a propósito: los márgenes no pintan
--- nada en el broker de planta (el SCADA no necesita precios, y es información
--- sensible). Sirve por API (web, PDF, BI); si un día debe salir al UNS, es
--- girar este flag desde la consola.
+-- Registro en el catálogo. `publish=FALSE` deja anotado que los márgenes no
+-- deberían pintar nada en el broker de planta —el SCADA no necesita precios, y es
+-- información sensible— para cuando la republicación al UNS se implemente. En esta
+-- edición el KPI se sirve por API y ese campo no lo lee nadie.
 INSERT INTO kpi_catalog (name, view_name, topic, derived_from, time_column, unit, units, description, publish) VALUES
 ('business', 'v_business_hourly', 'greytec/demo/produccion/llenado/_kpi/business', 'plc-llenado-01,medidor-02', 'hour', 'USD',
     '{"margen_usd":"USD","costo_energia_usd":"USD","costo_rechazos_usd":"USD","costo_paradas_usd":"USD"}',

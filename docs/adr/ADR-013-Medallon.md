@@ -99,6 +99,5 @@ Misma lógica que indexar solo las consultas que sabes que vas a correr.
 
 - [ADR-001](./ADR-001-TimescaleDB.md) — TimescaleDB como TSDB
 - [ADR-007](./ADR-007-CQRS-Edge.md) — CQRS: Grafana lee la BD, no MQTT
-- el write-back de KPIs]-Write-back.md) — quién publica estos KPIs de vuelta al UNS
 - `deploy/3-central/sql/` — `silver.sql`, `gold.sql`, `continuous_aggregates.sql`, `db-medallon.html`
-- `docs/internal/journal/journal-sprint-1.3.md` §4 — la medición del 345×
+- La medición del 345× procede del diario de desarrollo interno, no publicado en este anexo.

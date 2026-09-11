@@ -1,15 +1,15 @@
-/* Catálogo de KPIs (issue 2.2-C) — la vista que demuestra la tesis del
-   producto: configurar no es desplegar. Un PUT aquí surte efecto en el UNS en
-   ≤30 s (el tick del write-back), sin tocar el servidor.
+/* Catálogo de KPIs — la vista que demuestra que configurar no es desplegar: un
+   PUT aquí cambia qué expone /api/v1/kpi sin tocar el servidor ni reiniciar nada.
 
-   Decisiones que vienen del contrato §3.4:
+   La lógica de cada KPI vive en su vista gold (regla anti-dilución del contrato
+   §10.2: ningún consumidor calcula KPIs). Aquí solo se registra cuál es la vista,
+   por qué columna se filtra el tiempo y en qué unidad se reporta.
+
    · Se enseñan TAMBIÉN los deshabilitados (GET /admin/kpis) — apagar en vez de
      borrar, o no habría forma de reencender.
    · Los 422 se muestran TAL CUAL: la API dice qué columnas existen, y eso es
      media ayuda contextual gratis.
-   · Toda escritura confirma antes: esto cambia lo que se publica al UNS.
-   · Al borrar, si viene `retained_por_limpiar`, se avisa: ese retained puede
-     quedar huérfano en el broker si el write-back estaba parado. */
+   · Toda escritura confirma antes: cambia lo que ven los consumidores. */
 import { useState } from 'react';
 
 import { ApiError } from '../../api/client';
@@ -23,9 +23,7 @@ const EMPTY: KpiIn = {
   derived_from: '',
   time_column: 'hour',
   unit: '',
-  units: {},
   description: '',
-  publish: true,
   enabled: true,
 };
 
@@ -35,52 +33,29 @@ export function CatalogoKpis() {
   const del = useDeleteKpi();
 
   const [editing, setEditing] = useState<{ name: string; body: KpiIn; isNew: boolean } | null>(null);
-  const [toggling, setToggling] = useState<{ kpi: AdminKpi; field: 'enabled' | 'publish' } | null>(null);
+  const [toggling, setToggling] = useState<AdminKpi | null>(null);
   const [deleting, setDeleting] = useState<AdminKpi | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
 
   function confirmToggle() {
     if (!toggling) return;
-    const { kpi, field } = toggling;
-    const body: KpiIn = { ...kpi, [field]: !kpi[field] };
+    const body: KpiIn = { ...toggling, enabled: !toggling.enabled };
     put.mutate(
-      { name: kpi.name, body },
+      { name: toggling.name, body },
       { onSuccess: () => setToggling(null) },
     );
   }
 
   function confirmDelete() {
     if (!deleting) return;
-    del.mutate(deleting.name, {
-      onSuccess: (res) => {
-        setDeleting(null);
-        if (res.data.retained_por_limpiar) {
-          setAviso(
-            `El KPI '${res.data.deleted}' se borró, pero su tópico ` +
-              `'${res.data.retained_por_limpiar}' publicaba retained. Si el ` +
-              `write-back estaba parado en este momento, ese retained queda ` +
-              `huérfano en el broker y hay que limpiarlo a mano (contrato §3.4).`,
-          );
-        }
-      },
-    });
+    del.mutate(deleting.name, { onSuccess: () => setDeleting(null) });
   }
 
   return (
     <>
       <div className="view-head">
-        <div className="label crumbs">Familia 4 · un cambio aquí llega al UNS en ≤30 s</div>
+        <div className="label crumbs">Familia 4 · la lógica vive en la vista gold; aquí se registra</div>
         <h1>Catálogo de KPIs</h1>
       </div>
-
-      {aviso && (
-        <div className="callout" role="alert">
-          {aviso}{' '}
-          <button className="btn ghost" style={{ padding: '2px 8px' }} onClick={() => setAviso(null)}>
-            Entendido
-          </button>
-        </div>
-      )}
 
       <div className="toolbar">
         <span className="label">
@@ -103,9 +78,8 @@ export function CatalogoKpis() {
                 <tr>
                   <th>KPI</th>
                   <th>Vista gold</th>
-                  <th>Tópico UNS</th>
+                  <th>Dirección UNS</th>
                   <th>Unidad</th>
-                  <th>Publica</th>
                   <th>Activo</th>
                   <th className="actions">Acciones</th>
                 </tr>
@@ -128,16 +102,9 @@ export function CatalogoKpis() {
                     <td>{k.unit || '—'}</td>
                     <td>
                       <Toggle
-                        on={k.publish}
-                        label={`publicación de ${k.name}`}
-                        onClick={() => setToggling({ kpi: k, field: 'publish' })}
-                      />
-                    </td>
-                    <td>
-                      <Toggle
                         on={k.enabled}
                         label={`estado de ${k.name}`}
-                        onClick={() => setToggling({ kpi: k, field: 'enabled' })}
+                        onClick={() => setToggling(k)}
                       />
                     </td>
                     <td className="actions">
@@ -164,7 +131,7 @@ export function CatalogoKpis() {
 
       {toggling && (
         <ConfirmDialog
-          title={`Cambiar ${toggling.field === 'publish' ? 'publicación' : 'estado'} de '${toggling.kpi.name}'`}
+          title={`Cambiar estado de '${toggling.name}'`}
           busy={put.isPending}
           onCancel={() => {
             put.reset();
@@ -173,13 +140,9 @@ export function CatalogoKpis() {
           onConfirm={confirmToggle}
         >
           <p>
-            {toggling.field === 'publish'
-              ? toggling.kpi.publish
-                ? 'Dejará de publicarse al UNS. El write-back limpia su retained en el siguiente tick.'
-                : `Volverá a publicarse en '${toggling.kpi.topic}' (retained) en ≤30 s.`
-              : toggling.kpi.enabled
-                ? 'El KPI se apaga: desaparece de la API pública y del UNS, pero conserva su configuración.'
-                : 'El KPI se enciende: vuelve a la API pública y, si publica, al UNS en ≤30 s.'}
+            {toggling.enabled
+              ? 'El KPI se apaga: desaparece de la API pública, pero conserva su configuración.'
+              : 'El KPI se enciende: vuelve a estar disponible en /api/v1/kpi.'}
           </p>
           {put.isError && <PutError error={put.error} />}
         </ConfirmDialog>
@@ -198,16 +161,10 @@ export function CatalogoKpis() {
           onConfirm={confirmDelete}
         >
           <p>
-            Se pierde su configuración (vista, tópico, unidades). Si solo quieres
-            apagarlo, cancela y usa el interruptor «Activo» — es reversible.
+            Se pierde su registro en el catálogo: la vista gold sigue existiendo en la
+            base y se puede consultar por SQL, pero el KPI desaparece de la API. Si solo
+            quieres apagarlo, cancela y usa el interruptor «Activo» — es reversible.
           </p>
-          {deleting.publish && (
-            <div className="callout">
-              Este KPI publica retained en <code>{deleting.topic}</code>. El
-              write-back lo limpia solo en el siguiente tick — salvo que esté
-              parado ahora mismo, en cuyo caso el retained queda huérfano.
-            </div>
-          )}
           {del.isError && <PutError error={del.error} />}
         </ConfirmDialog>
       )}
@@ -269,17 +226,11 @@ function KpiEditor({
 }) {
   const [name, setName] = useState(initial.name);
   const [body, setBody] = useState<KpiIn>(initial.body);
-  // Las unidades se editan como filas campo→unidad; las CLAVES definen qué se
-  // publica al UNS (contrato §3.4) — por eso el editor las trata con nombre.
-  const [unitRows, setUnitRows] = useState<[string, string][]>(
-    Object.entries(initial.body.units),
-  );
 
   const set = <K extends keyof KpiIn>(k: K, v: KpiIn[K]) => setBody((b) => ({ ...b, [k]: v }));
 
   function save() {
-    const units = Object.fromEntries(unitRows.filter(([k]) => k.trim() !== ''));
-    onSave(name.trim(), { ...body, units });
+    onSave(name.trim(), body);
   }
 
   return (
@@ -312,14 +263,17 @@ function KpiEditor({
             />
           </label>
           <label className="field wide">
-            <span>Tópico UNS (destino del write-back)</span>
+            <span>Dirección en el espacio de nombres</span>
             <input
               type="text"
               value={body.topic}
               onChange={(e) => set('topic', e.target.value)}
               placeholder="greytec/demo/produccion/llenado/_kpi/scrap_rate"
             />
-            <span className="hint">Sin comodines +/# ni barras al inicio o final.</span>
+            <span className="hint">
+              La dirección canónica del KPI en la jerarquía (contrato §3.2). Sin comodines
+              +/# ni barras al inicio o final.
+            </span>
           </label>
           <label className="field">
             <span>Columna temporal</span>
@@ -355,63 +309,12 @@ function KpiEditor({
             <label className="check">
               <input
                 type="checkbox"
-                checked={body.publish}
-                onChange={(e) => set('publish', e.target.checked)}
-              />
-              publish — el write-back lo saca al UNS
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
                 checked={body.enabled}
                 onChange={(e) => set('enabled', e.target.checked)}
               />
               enabled — visible para consumidores
             </label>
           </div>
-        </div>
-
-        <div className="field">
-          <span>Campos publicados (campo → unidad)</span>
-          <span className="hint">
-            Las claves definen QUÉ columnas de la vista salen al UNS. publish=on con
-            esto vacío se rechaza (422).
-          </span>
-          {unitRows.map(([k, v], i) => (
-            <div key={i} style={{ display: 'flex', gap: 8 }}>
-              <input
-                type="text"
-                style={{ flex: 2, border: '1px solid var(--rule)', padding: '6px 8px' }}
-                value={k}
-                placeholder="columna"
-                onChange={(e) =>
-                  setUnitRows((rows) => rows.map((r, j) => (j === i ? [e.target.value, r[1]] : r)))
-                }
-              />
-              <input
-                type="text"
-                style={{ flex: 1, border: '1px solid var(--rule)', padding: '6px 8px' }}
-                value={v}
-                placeholder="unidad"
-                onChange={(e) =>
-                  setUnitRows((rows) => rows.map((r, j) => (j === i ? [r[0], e.target.value] : r)))
-                }
-              />
-              <button
-                className="btn ghost"
-                onClick={() => setUnitRows((rows) => rows.filter((_, j) => j !== i))}
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-          <button
-            className="btn outline"
-            style={{ alignSelf: 'flex-start', marginTop: 6 }}
-            onClick={() => setUnitRows((rows) => [...rows, ['', '']])}
-          >
-            Añadir campo
-          </button>
         </div>
 
         {error != null && <PutError error={error} />}

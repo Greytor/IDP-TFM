@@ -15,7 +15,7 @@ ekuiper/
 
 ## Contrato
 
-Las reglas publican según el **contrato UNS v0.1** (`docs/contracts/UNS.md`):
+Las reglas publican según el **contrato UNS v0.5** (`docs/contracts/UNS.md`):
 
 - Las **alarmas** (cruce de umbral) son eventos discretos → categoría `evt` (§4.4),
   envelope `{ts, src, evt_type, severity, msg, …}`.

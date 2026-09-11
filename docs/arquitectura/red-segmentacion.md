@@ -64,12 +64,18 @@ compartir camino.
 El **plano de datos** es la telemetría. Sale de la operación mediante una conexión iniciada
 desde dentro, así que no exige abrir ningún puerto entrante hacia la celda.
 
-El **plano de control** es el acceso administrativo, y se resuelve con una red superpuesta
-con autenticación por dispositivo cuyo **único nodo es el propio cortafuegos**. El
-administrador llega hasta él desde fuera y alcanza la zona intermedia; el descenso hacia la
-operación lo autoriza la fila 7, desde un solo equipo, por SSH y con registro. La conexión
-termina en la zona intermedia y se vuelve a establecer bajo control, que es el patrón de
-acceso remoto de IEC 62443.
+El **plano de control** es el acceso administrativo. Se resuelve con **Tailscale**, una red
+superpuesta con autenticación por dispositivo, cuyo **único nodo dentro del laboratorio es
+el propio cortafuegos**, configurado como *enrutador de subred* (`subnet router`): anuncia
+al tailnet las redes del laboratorio, de modo que el administrador las alcanza sin instalar
+un cliente en cada equipo.
+
+Miembros del tailnet: el cortafuegos y el **equipo de servicio** del administrador. Ningún
+dispositivo de campo pertenece a él, y esa ausencia es deliberada — ver más abajo.
+
+El descenso hacia la operación lo autoriza la fila 7, desde un solo equipo de la zona
+intermedia, por SSH y con registro. La conexión termina en la zona intermedia y se vuelve a
+establecer bajo control, que es el patrón de acceso remoto de IEC 62443.
 
 Que el nodo esté en el cortafuegos y no en el gateway de borde es lo que mantiene cierta la
 fila 3. Un agente de administración instalado en el propio gateway tendría que hablar con

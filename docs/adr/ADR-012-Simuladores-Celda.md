@@ -1,6 +1,6 @@
 # ADR-012: Simuladores Python multiprotocolo en vez de OpenPLC
 
-**Status:** Aceptado — *Supersedes la decisión previa sobre OpenPLC]-OpenPLC.md), revisa la decisión previa sobre el rol del Brix]-BRIX.md)*
+**Status:** Aceptado — *Supersedes la decisión previa sobre OpenPLC, revisa la decisión previa sobre el rol del Brix*
 **Fecha:** 2026-07-16
 **Autores:** José Desiderio
 
@@ -8,7 +8,7 @@
 
 ## Contexto
 
-la decisión previa sobre OpenPLC]-OpenPLC.md) puso OpenPLC Runtime en el Brix como PLC virtual, con la celda
+la decisión previa sobre OpenPLC puso OpenPLC Runtime en el Brix como PLC virtual, con la celda
 modelada en Structured Text (tanque + condiciones + cinta). Funcionó, pero al construir sobre
 él aparecieron tres límites:
 
@@ -76,7 +76,7 @@ Ningún simulador publica MQTT: **no tienen acceso al broker**.
 
 **Deuda técnica generada:**
 - El Brix mezcla dos roles (campo + gateway edge) que en planta están separados. Concesión de
-  laboratorio mientras no llegue el IOT2050. Ver la decisión previa sobre el rol del Brix]-BRIX.md).
+  laboratorio mientras no llegue el IOT2050. Ver la decisión previa sobre el rol del Brix.
 
 ## Implicaciones de seguridad
 
@@ -91,7 +91,7 @@ Ningún simulador publica MQTT: **no tienen acceso al broker**.
 
 ## Referencias
 
-- la decisión previa sobre OpenPLC]-OpenPLC.md) — superseded por este
-- la decisión previa sobre el rol del Brix]-BRIX.md) — el rol del Brix
+- la decisión previa sobre OpenPLC — superseded por este
+- la decisión previa sobre el rol del Brix — el rol del Brix
 - `deploy/1-campo/README.md` — topología, causalidad y mapa de registros
 - `docs/contracts/UNS.md` §7.4 — payloads de la celda

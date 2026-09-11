@@ -3,12 +3,12 @@
 Diferencia con el resto de la API: estos endpoints ESCRIBEN. Y no escriben datos,
 escriben CATÁLOGOS — las tablas que dicen cómo se interpreta y se publica el dato:
 
-    kpi_catalog  → qué KPIs existen, de qué vista salen y cuáles se republican al UNS
+    kpi_catalog  → qué KPIs existen y de qué vista gold sale cada uno
     asset_tags   → cómo se llama y en qué unidad va cada (src, field) del dato crudo
 
-Por qué eso importa: el catálogo NO es decoración. `kpi_catalog.publish` decide qué
-se publica en el UNS, y `units` decide qué campos salen. Una fila mal puesta aquí no
-da un error bonito — rompe el write-back o deja un endpoint devolviendo 500. De ahí
+Por qué eso importa: el catálogo NO es decoración. Decide qué KPIs expone la API y
+sobre qué vista se calcula cada uno. Una fila mal puesta aquí no da un error bonito
+— deja un endpoint devolviendo 500 en tiempo de lectura. De ahí
 que casi todo este archivo sea VALIDACIÓN: se comprueba contra la base ANTES de
 aceptar, para convertir un fallo silencioso en tiempo de lectura en un 422 claro en
 tiempo de escritura.
@@ -38,16 +38,11 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 class KpiIn(BaseModel):
     view_name: str = Field(..., description="Vista gold donde vive la lógica del KPI")
-    topic: str = Field(..., description="Destino del write-back en el UNS")
+    topic: str = Field(..., description="Dirección canónica del KPI en el espacio de nombres (§3.2)")
     derived_from: str = Field("", description="src origen; varios separados por coma")
     time_column: str = Field("hour", description="Columna temporal de la vista")
     unit: str = Field("", description="Unidad titular del KPI")
-    units: dict[str, str] = Field(
-        default_factory=dict,
-        description="campo → unidad. SUS CLAVES DEFINEN QUÉ SE PUBLICA al UNS.",
-    )
     description: str = ""
-    publish: bool = True
     enabled: bool = True
 
 
@@ -77,25 +72,18 @@ def _validar_kpi(name: str, k: KpiIn) -> None:
     """Todo lo que tiene que ser cierto para que este KPI funcione de verdad.
 
     Sin esto, el catálogo acepta cualquier cosa y el error aparece LEJOS: un 500 en
-    /api/v1/kpi/{name}, o un write-back publicando campos que no existen. Cada
-    comprobación de aquí es un fallo que se descubre al guardar, no en producción.
+    /api/v1/kpi/{name} el día que alguien lo consulte. Cada comprobación de aquí es
+    un fallo que se descubre al guardar, no en producción.
 
     Orden deliberado: primero lo que se decide con puro Python, después lo que exige
     consultar la base. Es lo barato antes que lo caro, pero sobre todo evita que un
     error de bulto dependa de que la base conteste — con las comprobaciones al revés,
     un tópico con comodín daba 500 en vez de 422 cuando la base no estaba.
     """
-    # Un tópico de PUBLICACIÓN no admite comodines ni barras sueltas (MQTT lo prohíbe:
-    # los comodines son solo para suscribirse).
+    # La dirección del KPI es un tópico concreto, no un patrón: los comodines solo
+    # valen para suscribirse (MQTT lo prohíbe en una dirección de publicación).
     if any(c in k.topic for c in "+#") or k.topic.startswith("/") or k.topic.endswith("/"):
-        raise HTTPException(422, f"Tópico inválido para publicar: {k.topic!r}")
-
-    if k.publish and not k.units:
-        raise HTTPException(
-            422,
-            "publish=true pero units está vacío: no habría ningún campo que publicar. "
-            "Declara los campos o pon publish=false.",
-        )
+        raise HTTPException(422, f"Tópico inválido: {k.topic!r}")
 
     cols = _columnas(k.view_name)
     if not cols:
@@ -108,21 +96,11 @@ def _validar_kpi(name: str, k: KpiIn) -> None:
             f"Columnas disponibles: {', '.join(sorted(cols))}",
         )
 
-    # Las claves de `units` son los campos que el write-back publicará al UNS: si una
-    # no existe en la vista, la publicación fallaría al leerla.
-    fantasma = sorted(set(k.units) - cols)
-    if fantasma:
-        raise HTTPException(
-            422,
-            f"units apunta a campos que {k.view_name!r} no tiene: {', '.join(fantasma)}. "
-            f"Columnas disponibles: {', '.join(sorted(cols))}",
-        )
-
 
 # ─── kpi_catalog ────────────────────────────────────────────────────────────
 
-_KPI_COLS = ("name, view_name, topic, derived_from, time_column, unit, units, "
-             "description, publish, enabled")
+_KPI_COLS = ("name, view_name, topic, derived_from, time_column, unit, "
+             "description, enabled")
 
 
 @router.get("/kpis")
@@ -161,18 +139,17 @@ def upsert_kpi(name: str, k: KpiIn) -> dict:
         f"""
         INSERT INTO kpi_catalog ({_KPI_COLS})
         VALUES (%(name)s, %(view_name)s, %(topic)s, %(derived_from)s, %(time_column)s,
-                %(unit)s, %(units)s, %(description)s, %(publish)s, %(enabled)s)
+                %(unit)s, %(description)s, %(enabled)s)
         ON CONFLICT (name) DO UPDATE SET
             view_name = EXCLUDED.view_name, topic = EXCLUDED.topic,
             derived_from = EXCLUDED.derived_from, time_column = EXCLUDED.time_column,
-            unit = EXCLUDED.unit, units = EXCLUDED.units,
-            description = EXCLUDED.description, publish = EXCLUDED.publish,
+            unit = EXCLUDED.unit, description = EXCLUDED.description,
             enabled = EXCLUDED.enabled
         RETURNING {_KPI_COLS}
         """,
-        {"name": name, **k.model_dump(), "units": _json(k.units)},
+        {"name": name, **k.model_dump()},
     )
-    log.info("Catálogo: KPI %r guardado (publish=%s, enabled=%s)", name, k.publish, k.enabled)
+    log.info("Catálogo: KPI %r guardado (enabled=%s)", name, k.enabled)
     return envelope(fila)
 
 
@@ -180,28 +157,21 @@ def upsert_kpi(name: str, k: KpiIn) -> dict:
 def delete_kpi(name: str) -> dict:
     """Borra un KPI del catálogo.
 
-    El retenido se limpia SOLO: el write-back relee el catálogo en cada tick (30 s) y
-    su clear_removed() publica un retained vacío en los tópicos que ya no están
-    (contrato UNS §7.6). No hay que hacer nada.
+    Borra el REGISTRO, no la lógica: la vista gold sigue existiendo en la base y se
+    puede consultar por SQL. Lo que desaparece es su publicación como KPI en
+    `/api/v1/kpi`, que es lo que este catálogo gobierna.
 
-    Con una salvedad, y por eso se devuelve `retained_por_limpiar`: clear_removed()
-    compara contra su estado EN MEMORIA, o sea contra lo que ha publicado ese
-    proceso. Si el write-back está parado cuando borras (o se reinicia antes del
-    siguiente tick), arranca sin memoria del tópico, nunca sabrá que existió y el
-    retenido se queda huérfano en el broker para siempre. El campo avisa de ese caso.
-
-    Si solo quieres apagarlo, es mejor un PUT con enabled=false: conserva la
-    configuración, es reversible, y el write-back lo limpia igual.
+    Si solo quieres apagarlo, es mejor un PUT con `enabled=false`: conserva la
+    configuración y es reversible.
     """
     fila = execute(
-        "DELETE FROM kpi_catalog WHERE name = %s RETURNING name, topic, publish",
+        "DELETE FROM kpi_catalog WHERE name = %s RETURNING name",
         (name,),
     )
     if not fila:
         raise HTTPException(404, f"KPI no registrado: {name!r}")
-    aviso = fila["topic"] if fila["publish"] else None
-    log.info("Catálogo: KPI %r borrado (retained por limpiar: %s)", name, aviso)
-    return envelope({"deleted": fila["name"], "retained_por_limpiar": aviso})
+    log.info("Catálogo: KPI %r borrado", name)
+    return envelope({"deleted": fila["name"]})
 
 
 # ─── asset_tags ─────────────────────────────────────────────────────────────
@@ -378,9 +348,3 @@ def _kpis_rotos() -> list[dict]:
         )
         ORDER BY k.name
     """)
-
-
-def _json(d: dict) -> str:
-    """psycopg no adapta un dict de Python a JSONB por su cuenta; se manda serializado."""
-    import json
-    return json.dumps(d)

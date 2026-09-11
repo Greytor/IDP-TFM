@@ -1,4 +1,5 @@
-/* Cliente de la API — contrato docs/contracts/API.md (v0.2).
+/* Cliente de la API. La especificación la sirve el propio servicio en
+   /openapi.json, navegable desde el Explorador de APIs de la consola.
 
    Todas las rutas son RELATIVAS (/api/v1/…): en producción las enruta nginx y
    en desarrollo el proxy de Vite. Mismo código, cero CORS — y CORS_ORIGINS de

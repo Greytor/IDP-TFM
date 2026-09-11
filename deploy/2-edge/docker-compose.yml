@@ -41,7 +41,7 @@ services:
 
   # ─── Node-RED — Adquisición Modbus TCP / OPC UA + UNS + Dashboard ──────────
   # Rol (ADR-013): cliente Modbus TCP + OPC UA, normalización al contrato
-  # UNS v0.1 (docs/contracts/UNS.md), y Node-RED Dashboard como visualizador
+  # UNS v0.5 (docs/contracts/UNS.md), y Node-RED Dashboard como visualizador
   # local del operador de campo. SIN base de datos.
   #
   # Imagen construida desde ./nodered/Dockerfile (añade modbus + opcua +

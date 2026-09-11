@@ -1,5 +1,5 @@
-/* Tipos del contrato API v0.2 (docs/contracts/API.md — la fuente de verdad, no
-   Swagger). Verificados contra la API desplegada el 2026-07-17.
+/* Tipos de la API. La fuente de verdad es la especificación que sirve el propio
+   servicio en /openapi.json; estos tipos se verifican contra la API desplegada.
 
    El principio del contrato §3.2: los KPIs son dirigidos por catálogo y sus
    columnas varían por cliente. Por eso las series son Record<string, …> y no
@@ -108,10 +108,7 @@ export interface AdminKpi {
   derived_from: string;
   time_column: string;
   unit: string;
-  /** campo → unidad. SUS CLAVES DEFINEN QUÉ SE PUBLICA al UNS. */
-  units: Record<string, string>;
   description: string;
-  publish: boolean;
   enabled: boolean;
 }
 
@@ -143,8 +140,6 @@ export type BizParamIn = Pick<BusinessParam, 'value' | 'unit' | 'description'>;
 
 export interface KpiDeleteResult {
   deleted: string;
-  /** Tópico cuyo retained puede quedar huérfano si el write-back estaba parado. */
-  retained_por_limpiar: string | null;
 }
 
 /** /admin/health — OJO: NO usa el sobre {meta,data}; claves en español, tal cual. */

@@ -156,7 +156,5 @@ el producto (ver `golden-stack.md`).
 
 ## Referencias
 
-- [ADR-013](./ADR-013-Medallon.md), el write-back de KPIs]-Write-back.md)
-- `docs/architecture/golden-stack.md` — frontera producto/laboratorio
-- `docs/contracts/API.md` §3.4 — las cuatro familias
-- `docs/pm/sprint-2.md` — issues 2.1-A (nginx), 2.1-D (`/admin/services`), 2.2-A (andamiaje)
+- [ADR-013](./ADR-013-Medallon.md) — el modelo medallón
+- La especificación de la API la sirve el propio servicio en `/openapi.json`, navegable desde el Explorador de APIs de la consola.

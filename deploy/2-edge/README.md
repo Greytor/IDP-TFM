@@ -3,11 +3,11 @@
 Stack de adquisición y mensajería para el **Siemens IOT2050 Advanced**
 (ARM, 2 GB RAM). Se prototipa en la **Gigabyte Brix** (x86, Debian,
 `brix-edge`, `10.10.10.100`) y el mismo `docker-compose.yml` se despliega luego
-en el IOT2050 (`10.10.10.4`). Ruta de despliegue: **`/opt/greytec-edge/`**.
+en el IOT2050 (`10.10.10.4`). Ruta de despliegue: **`/opt/IDP-TFM/`**.
 
 Decisiones de referencia: [ADR-011](../../docs/adr/ADR-011-Gateway-IOT2050.md)
-(stack edge), [ADR-003](../../../docs/adr/platform/ADR-003-NanoMQ.md) (broker),
-[Contrato UNS v0.1](../../../docs/contracts/UNS.md).
+(stack edge), [ADR-003](../../docs/adr/ADR-003-NanoMQ.md) (broker),
+[Contrato UNS v0.5](../../docs/contracts/UNS.md).
 
 ## Servicios (sin base de datos)
 
@@ -69,11 +69,11 @@ edge-iot2050/
 ## Despliegue en el Brix
 
 ```bash
-# En el Brix (vía ssh root@10.10.10.100), desde /opt/greytec-edge/
+# En el Brix (vía ssh root@10.10.10.100), desde /opt/IDP-TFM/
 cp .env.example .env          # si no se copió el .env real; editar credenciales
 
 # Node-RED corre como uid 1000 y escribe en ./nodered (bind-mount):
-chown -R 1000:1000 /opt/greytec-edge/nodered
+chown -R 1000:1000 /opt/IDP-TFM/nodered
 
 docker compose up -d --build  # --build compila la imagen de Node-RED
 docker compose ps
@@ -126,5 +126,5 @@ docker compose logs -f nanomq # verificar "bridge" conectado a EMQX central
 
 ## Migrar al IOT2050
 
-Copiar `/opt/greytec-edge/` al IOT2050 (misma ruta), ajustar IPs en `.env` si
+Copiar `/opt/IDP-TFM/` al IOT2050 (misma ruta), ajustar IPs en `.env` si
 cambian y repetir el despliegue. El Dashboard quedará en `http://10.10.10.4:1880/ui`.
