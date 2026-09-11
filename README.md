@@ -19,18 +19,6 @@ sobre un mismo espacio de nombres, y dos consumidores independientes leen de él
 a ningún productor. Entre unos y otros no hay una sola integración punto a punto: hay un
 contrato.
 
-```
-CAMPO (VLAN OT)              BORDE (VLAN OT)           CENTRO (VLAN DMZ)        CONSUMO (VLAN IT)
-┌──────────────────┐        ┌─────────────────┐       ┌──────────────────┐     ┌──────────────┐
-│ plc-llenado-01   │OPC UA  │                 │       │ EMQX (bróker UNS)│     │              │
-│ valvula-01       ├───────►│ Node-RED        │ MQTT  │      ▼           │     │  Grafana     │
-│ coriolis-01      │Modbus  │ (normalización) ├──────►│ Redpanda (log)   ├────►│  idp-web     │
-│ medidor-02       ├───────►│ NanoMQ (S&F)    │puente │      ▼           │ SQL │  idp-api     │
-└──────────────────┘        │ def-publisher   │       │ TimescaleDB      │HTTP │              │
-                            └─────────────────┘       │ (bronce/plata/oro)│    └──────────────┘
-                                                      └──────────────────┘
-```
-
 El registro de eventos es la **fuente de verdad**; la base de datos y los paneles son vistas
 materializadas descartables y reconstruibles desde él.
 
